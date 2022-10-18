@@ -58,3 +58,6 @@ sysinfo.txt
 # Crashlytics generated file
 crashlytics-build.properties
 
+LearnCatLikeCode/Library/
+LearnCatLikeCode/Temp/
+LearnCatLikeCode/Logs/
