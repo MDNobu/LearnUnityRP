@@ -61,3 +61,5 @@ crashlytics-build.properties
 LearnCatLikeCode/Library/
 LearnCatLikeCode/Temp/
 LearnCatLikeCode/Logs/
+LearnCatLikeCode/.idea/
+LearnCatLikeCode/obj/
