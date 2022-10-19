@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e4dbce6a470457ab2b86188fe91c73b, type: 3}
+  m_Name: QxShape
+  m_EditorClassIdentifier: 
+  Prefabs:
+  - {fileID: 3728796908606085880, guid: 53eeef627212019419a6d93305301338, type: 3}
+  - {fileID: 3182182477031669987, guid: 3ff4f85f8d320e24faeb6034b33ff4cd, type: 3}
+  - {fileID: 3249846635443207867, guid: 53262a381c1c6c54391a23facf8d2b1d, type: 3}
