@@ -38,4 +38,16 @@ public class GameDataReader
         value.z = reader.ReadSingle();
         return value;
     }
+
+   
+
+    public Color ReadColor()
+    {
+        Color value;
+        value.r = reader.ReadSingle();
+        value.g = reader.ReadSingle();
+        value.b = reader.ReadSingle();
+        value.a = reader.ReadSingle();
+        return value;
+    }
 }

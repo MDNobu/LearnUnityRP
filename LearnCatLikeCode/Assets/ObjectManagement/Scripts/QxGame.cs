@@ -66,6 +66,7 @@ public class QxGame : PersistableObject
         for (int i = 0; i < shapes.Count; i++)
         {
             writer.Write(shapes[i].ShapeId);
+            writer.Write(shapes[i].MaterialId);
             shapes[i].Save(writer);
         }
     }
@@ -77,7 +78,8 @@ public class QxGame : PersistableObject
         for (int i = 0; i < count; i++)
         {
             int shapeId = reader.ReadInt();
-            QxShape o = shapeFactory.Get(shapeId);
+            int materialId = reader.ReadInt();
+            QxShape o = shapeFactory.Get(shapeId, materialId);
             // PersistableObject o = Instantiate(prefab);
             o.Load(reader);
             shapes.Add(o);
@@ -151,6 +153,12 @@ public class QxGame : PersistableObject
         t.localPosition = Random.insideUnitSphere * 5f;
         t.localRotation = Random.rotation;
         t.localScale = Vector3.one * Random.Range(0.1f, 1f);
+        
+        o.SetColor(Random.ColorHSV(
+            0f, 1f, 
+            0.5f, 1f,
+            0.25f, 1f, 
+            1f, 1f));
         shapes.Add(o);
     }
 }
