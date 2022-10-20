@@ -17,6 +17,7 @@ public class QxGame : PersistableObject
     public KeyCode newGameKey = KeyCode.N;
     public KeyCode saveGamekey = KeyCode.S;
     public KeyCode loadGameKey = KeyCode.L;
+    public KeyCode destoryKey = KeyCode.X;
 
     private string savePath;
     private List<QxShape> shapes;
@@ -55,8 +56,24 @@ public class QxGame : PersistableObject
             // LoadGame();
             BeginNewGame();
             storage.Load(this);
+        } else if (Input.GetKeyDown(destoryKey))
+        {
+            DestroyShape();
         }
         
+    }
+
+    private void DestroyShape()
+    {
+        if (shapes.Count > 0)
+        {
+            int index = Random.Range(0, shapes.Count);
+            Destroy(shapes[index].gameObject);
+            // shapes.RemoveAt(index);
+            int lastIndex = shapes.Count - 1;
+            shapes[index] = shapes[lastIndex];
+            shapes.RemoveAt(lastIndex);
+        }
     }
 
     public override void Save(GameDataWriter writer)
