@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Random = UnityEngine.Random;
 
 public class QxGame : PersistableObject
@@ -24,20 +25,54 @@ public class QxGame : PersistableObject
 
     private const int saveVersion = 1;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-    }
+    public float CreationSpeed { get; set; }
+    
+    public float DestructionSpeed { get; set; }
+
+    public int LevelCount = 2;
+    
+    private float creationProgress = 0;
+    private float destructionProgress = 0;
+    private int LoadedLevelBuildIndex = -1;
 
     private void Awake()
     {
+
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
         shapes = new List<QxShape>();
         savePath = Path.Combine(Application.persistentDataPath, "saveFile");
+
         
+
+        if (Application.isEditor)
+        {
+            // Scene loadedLevel = SceneManager.GetSceneByName("Level1");
+            // if (loadedLevel.isLoaded)
+            // {
+            //     SceneManager.SetActiveScene(loadedLevel);
+            //     return;
+            // }
+            
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene loadedScene = SceneManager.GetSceneAt(i);
+                if (loadedScene.name.Contains("Level"))
+                {
+                    SceneManager.SetActiveScene(loadedScene);
+                    LoadedLevelBuildIndex = loadedScene.buildIndex;
+                    return;
+                }
+            }
+        }
+        StartCoroutine(LoadLevel(1));
     }
 
-    // Update is called once per frame
-    void Update()
+
+
+    private void HandleInput()
     {
         if (Input.GetKeyDown(createKey))
         {
@@ -60,7 +95,39 @@ public class QxGame : PersistableObject
         {
             DestroyShape();
         }
-        
+        else
+        {
+            for (int i = 1; i <= LevelCount; i++)
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha0 + i))
+                {
+                    BeginNewGame();
+                    StartCoroutine(LoadLevel(i));
+                    return;
+                }
+            }
+        }
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        HandleInput();
+
+        creationProgress += Time.deltaTime * CreationSpeed;
+        while (creationProgress >= 1f)
+        {
+            creationProgress--;
+            CreateShape();
+        }
+
+        destructionProgress += Time.deltaTime * DestructionSpeed;
+        while (destructionProgress >= 1f)
+        {
+            destructionProgress--;
+            DestroyShape();
+        }
     }
 
     private void DestroyShape()
@@ -68,7 +135,8 @@ public class QxGame : PersistableObject
         if (shapes.Count > 0)
         {
             int index = Random.Range(0, shapes.Count);
-            Destroy(shapes[index].gameObject);
+            // Destroy(shapes[index].gameObject);
+            shapeFactory.Reclaim(shapes[index]);
             // shapes.RemoveAt(index);
             int lastIndex = shapes.Count - 1;
             shapes[index] = shapes[lastIndex];
@@ -86,6 +154,41 @@ public class QxGame : PersistableObject
             writer.Write(shapes[i].MaterialId);
             shapes[i].Save(writer);
         }
+    }
+
+    public IEnumerator LoadLevelDeprecated()
+    {
+        SceneManager.LoadScene("Level1", LoadSceneMode.Additive);
+        // 这里这样做的目的是等一帧，因为set active scene在场景加载后才能起作用，而loadScene调用这一帧场景还没加载,下一帧场景才加载
+        yield return null;
+        SceneManager.SetActiveScene(SceneManager.GetSceneByName("Level1"));
+    }
+    
+    public IEnumerator LoadLevel(int levelBuildIndex)
+    {
+        if (levelBuildIndex <= 0)
+        {
+            Debug.LogError("Try to load ilegal level");
+            yield break;
+        }
+
+        if (LoadedLevelBuildIndex > 0 && LoadedLevelBuildIndex == levelBuildIndex)
+        {
+            Debug.LogWarning("level:" + levelBuildIndex + " already loaded ");
+            yield break;
+        }
+        // 这里的目的是为了防止场景加载完成前，tick/update等逻辑执行
+        enabled = false;
+        if (LoadedLevelBuildIndex > 0)
+        {
+            yield return SceneManager.UnloadSceneAsync(LoadedLevelBuildIndex);
+        }
+        yield return SceneManager.LoadSceneAsync(
+            levelBuildIndex, LoadSceneMode.Additive
+        );
+        SceneManager.SetActiveScene(SceneManager.GetSceneAt(levelBuildIndex));
+        LoadedLevelBuildIndex = levelBuildIndex;
+        enabled = true;
     }
 
     public override void Load(GameDataReader reader)
@@ -152,7 +255,8 @@ public class QxGame : PersistableObject
 
         for (int i = 0; i < shapes.Count; i++)
         {
-            Destroy(shapes[i].gameObject);
+            // Destroy(shapes[i].gameObject);
+            shapeFactory.Reclaim(shapes[i]);
         }
         shapes.Clear();
     }
