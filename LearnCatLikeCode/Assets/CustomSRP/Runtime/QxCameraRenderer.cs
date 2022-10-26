@@ -3,31 +3,39 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class QxCameraRenderer
+public partial class QxCameraRenderer
 {
     private ScriptableRenderContext RenderContext;
     private Camera M_Camera;
 
     private CommandBuffer M_CommandBuffer = new CommandBuffer();
-    const string bufferName = "Render Camera";
+    const string BufferName = "Render Camera";
 
     private CullingResults M_CullingResults;
 
+    // private static ShaderTagId utilShaderTagId = new ShaderTagId("Standard");
+    
     private static ShaderTagId utilShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+
     
     public void Render(ScriptableRenderContext inRenderContext, Camera inCamera)
     {
         RenderContext = inRenderContext;
         M_Camera = inCamera;
 
+        PrepareBuffer();
+        PrepareForSceneWindow();
         if (!Cull())
         {
             return;
         }
         Setup();
         DrawVisibleGeometry();
+        DrawLegacyShaderGeometry();
+        DrawGizmos();
         Submit();
     }
+
 
     bool Cull()
     {
@@ -44,15 +52,15 @@ public class QxCameraRenderer
     private void Setup()
     {
         
-        M_CommandBuffer.name = bufferName;
+        M_CommandBuffer.name = BufferName;
         
         RenderContext.SetupCameraProperties(M_Camera);
+        CameraClearFlags flags = M_Camera.clearFlags;
         
-        M_CommandBuffer.ClearRenderTarget(true, true, Color.clear);
-        // M_CommandBuffer.BeginSample(bufferName);
+        M_CommandBuffer.ClearRenderTarget(flags <= CameraClearFlags.Depth , flags == CameraClearFlags.Color, 
+            flags == CameraClearFlags.Color ? M_Camera.backgroundColor.linear : Color.clear);
+        // M_CommandBuffer.BeginSample(BufferName);
         ExecuteBuffer();
-        
-        
     }
 
     private void ExecuteBuffer()
@@ -63,25 +71,34 @@ public class QxCameraRenderer
 
     private void Submit()
     {
-        // M_CommandBuffer.EndSample(bufferName);
+        // M_CommandBuffer.EndSample(BufferName);
         RenderContext.Submit();
     }
 
     private void DrawVisibleGeometry()
     {
-        var sortSetting = new SortingSettings(M_Camera)
+        SortingSettings sortSetting = new SortingSettings(M_Camera)
         {
             criteria = SortingCriteria.CommonOpaque
         };
         DrawingSettings drawingSettings = new DrawingSettings(utilShaderTagId, sortSetting);
-        FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.all);
+        FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
         RenderContext.DrawRenderers(
             M_CullingResults, ref drawingSettings, ref filteringSettings
             );
+
         
         RenderContext.DrawSkybox(M_Camera);
         
+        
+        sortSetting.criteria = SortingCriteria.CommonTransparent;
+        drawingSettings.sortingSettings = sortSetting;
+        filteringSettings.renderQueueRange = RenderQueueRange.transparent;
+        
+        RenderContext.DrawRenderers(
+            M_CullingResults, ref drawingSettings, ref filteringSettings
+            );
     }
     
     
