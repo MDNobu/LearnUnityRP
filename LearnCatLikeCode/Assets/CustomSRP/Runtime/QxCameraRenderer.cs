@@ -15,7 +15,8 @@ public partial class QxCameraRenderer
 
     // private static ShaderTagId utilShaderTagId = new ShaderTagId("Standard");
     
-    private static ShaderTagId utilShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+    private static ShaderTagId ulitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+    private static ShaderTagId litShaderTagId = new ShaderTagId("CustomLit");
 
     
     public void Render(ScriptableRenderContext inRenderContext, Camera inCamera,
@@ -82,11 +83,12 @@ public partial class QxCameraRenderer
         {
             criteria = SortingCriteria.CommonOpaque
         };
-        DrawingSettings drawingSettings = new DrawingSettings(utilShaderTagId, sortSetting)
+        DrawingSettings drawingSettings = new DrawingSettings(ulitShaderTagId, sortSetting)
         {
             enableInstancing = useGPUInstancing,
             enableDynamicBatching = useDynamicBatching
         };
+        drawingSettings.SetShaderPassName(1, litShaderTagId);
         FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
         RenderContext.DrawRenderers(
