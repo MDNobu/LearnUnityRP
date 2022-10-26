@@ -5,6 +5,17 @@ using UnityEngine.Rendering;
 
 public class QxCustomRenderPipeline : RenderPipeline
 {
+
+    public bool useDynamicInstancing;
+    public bool useDynamicBatching;
+    
+    public QxCustomRenderPipeline(bool useDynamicBatching, bool useDynamicInstancing, bool useSRPBatcher)
+    {
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+        this.useDynamicBatching = useDynamicBatching;
+        this.useDynamicInstancing = useDynamicInstancing;
+    }
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -22,7 +33,7 @@ public class QxCustomRenderPipeline : RenderPipeline
         QxCameraRenderer renderer = new QxCameraRenderer();
         foreach (var camera in cameras)
         {
-            renderer.Render(context, camera);
+            renderer.Render(context, camera, useDynamicBatching, useDynamicInstancing);
         }
 
     }

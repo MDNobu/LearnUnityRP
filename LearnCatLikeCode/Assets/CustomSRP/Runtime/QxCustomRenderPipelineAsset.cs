@@ -6,6 +6,9 @@ using UnityEngine.Rendering;
 [CreateAssetMenu(menuName = "Rendering/Custom Render Pipeline")]
 public class QxCustomRenderPipelineAsset : RenderPipelineAsset
 {
+    [SerializeField] 
+    private bool useGPUInstancing = true, useDynamicBatcing = true, useSRPBatching = true;
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -20,6 +23,6 @@ public class QxCustomRenderPipelineAsset : RenderPipelineAsset
 
     protected override RenderPipeline CreatePipeline()
     {
-        return new QxCustomRenderPipeline();
+        return new QxCustomRenderPipeline(useDynamicBatcing, useGPUInstancing, useSRPBatching);
     }
 }

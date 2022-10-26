@@ -18,7 +18,8 @@ public partial class QxCameraRenderer
     private static ShaderTagId utilShaderTagId = new ShaderTagId("SRPDefaultUnlit");
 
     
-    public void Render(ScriptableRenderContext inRenderContext, Camera inCamera)
+    public void Render(ScriptableRenderContext inRenderContext, Camera inCamera,
+        bool useDynamicInstancing, bool useGPUInstancing)
     {
         RenderContext = inRenderContext;
         M_Camera = inCamera;
@@ -30,7 +31,7 @@ public partial class QxCameraRenderer
             return;
         }
         Setup();
-        DrawVisibleGeometry();
+        DrawVisibleGeometry(useDynamicInstancing, useGPUInstancing);
         DrawLegacyShaderGeometry();
         DrawGizmos();
         Submit();
@@ -75,13 +76,17 @@ public partial class QxCameraRenderer
         RenderContext.Submit();
     }
 
-    private void DrawVisibleGeometry()
+    private void DrawVisibleGeometry(bool useDynamicBatching, bool useGPUInstancing)
     {
         SortingSettings sortSetting = new SortingSettings(M_Camera)
         {
             criteria = SortingCriteria.CommonOpaque
         };
-        DrawingSettings drawingSettings = new DrawingSettings(utilShaderTagId, sortSetting);
+        DrawingSettings drawingSettings = new DrawingSettings(utilShaderTagId, sortSetting)
+        {
+            enableInstancing = useGPUInstancing,
+            enableDynamicBatching = useDynamicBatching
+        };
         FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
         RenderContext.DrawRenderers(
