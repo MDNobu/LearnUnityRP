@@ -3,6 +3,7 @@
 
 #include "../ShaderLibrary/QxCommon.hlsl"
 #include "../ShaderLibrary/QxSurface3.hlsl"
+#include "../ShaderLibrary/QxLight.hlsl"
 #include "../ShaderLibrary/QxLighting.hlsl"
 
 // CBUFFER_START(UnityPerMaterial)
