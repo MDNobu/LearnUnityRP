@@ -18,6 +18,7 @@ public partial class QxCameraRenderer
     private static ShaderTagId ulitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
     private static ShaderTagId litShaderTagId = new ShaderTagId("CustomLit");
 
+    private QxLighting lighting = new QxLighting();
     
     public void Render(ScriptableRenderContext inRenderContext, Camera inCamera,
         bool useDynamicInstancing, bool useGPUInstancing)
@@ -32,6 +33,7 @@ public partial class QxCameraRenderer
             return;
         }
         Setup();
+        lighting.Setup(RenderContext, M_CullingResults);
         DrawVisibleGeometry(useDynamicInstancing, useGPUInstancing);
         DrawLegacyShaderGeometry();
         DrawGizmos();

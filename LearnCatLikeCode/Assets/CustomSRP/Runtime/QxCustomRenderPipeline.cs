@@ -11,9 +11,10 @@ public class QxCustomRenderPipeline : RenderPipeline
     
     public QxCustomRenderPipeline(bool useDynamicBatching, bool useDynamicInstancing, bool useSRPBatcher)
     {
-        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
         this.useDynamicBatching = useDynamicBatching;
         this.useDynamicInstancing = useDynamicInstancing;
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+        GraphicsSettings.lightsUseLinearIntensity = true;
     }
     
     // Start is called before the first frame update
