@@ -17,6 +17,7 @@
   
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 
 float3 QxTransformObjectToWorld(float3 positionOS)
 {
@@ -26,6 +27,11 @@ float3 QxTransformObjectToWorld(float3 positionOS)
 float4 QxTransformWorldToHClip(float3 positionWS)
 {
     return mul(unity_MatrixVP, float4(positionWS, 1.0));
+}
+
+float Square(float v)
+{
+    return v * v;
 }
 
 #endif

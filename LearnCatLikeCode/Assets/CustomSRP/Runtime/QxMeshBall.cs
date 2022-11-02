@@ -8,6 +8,8 @@ public class QxMeshBall : MonoBehaviour
 {
     private static int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static int cutoffId = Shader.PropertyToID("_Cutoff");
+    private static int metallicId = Shader.PropertyToID("_Metallic");
+    private static int smoothnessId = Shader.PropertyToID("_Smoothness");
 
     [SerializeField]
     private Mesh mesh = default;
@@ -18,6 +20,8 @@ public class QxMeshBall : MonoBehaviour
     
     private Matrix4x4[] matrices = new Matrix4x4[1023];
     private Vector4[] baseColors = new Vector4[1023];
+    private float[] metallic = new float[1023];
+    private float[] soomthness = new float[1023];
     private float[] cutoffs = new float[1023];
 
     private MaterialPropertyBlock block;
@@ -41,6 +45,8 @@ public class QxMeshBall : MonoBehaviour
             block = new MaterialPropertyBlock();
             block.SetVectorArray(BaseColorId, baseColors);
             block.SetFloatArray(cutoffId, cutoffs);
+            block.SetFloatArray(smoothnessId, soomthness);
+            block.SetFloatArray(metallicId, metallic);
         }
         
         
