@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20a9bb8182c4476e900d5ed1c79f5e1d, type: 3}
+  m_Name: QxShapeFactory
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 8333825995942513695, guid: b3d7540769ba20c4da982b04e9e4b248, type: 3}
+  - {fileID: 4778983332370127750, guid: 73458f31bbd7fb34296072347c75d740, type: 3}
+  - {fileID: 7887305613764630613, guid: 39ebd25ab5a7a47488ba13dd2967e7b3, type: 3}
+  materials:
+  - {fileID: 2100000, guid: 9f4298bef36e1684db7d7ac06d686b83, type: 2}
+  - {fileID: 2100000, guid: 9a1d0b4d5edda934f852a12a5c596eb5, type: 2}
+  - {fileID: 2100000, guid: a5f0031374f79184f932cbaf848a33d6, type: 2}
+  recycle: 1
