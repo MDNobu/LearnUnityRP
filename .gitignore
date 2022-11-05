@@ -64,3 +64,11 @@ LearnCatLikeCode/Logs/
 LearnCatLikeCode/.idea/
 LearnCatLikeCode/obj/
 LearnCatLikeCode/Assets/TextMesh Pro/
+
+/*/[Ll]ibrary/
+/*/[Tt]emp/
+/*/[Oo]bj/
+/*/[Bb]uild/
+/*/[Bb]uilds/
+/*/[Ll]ogs/
+/*/[Mm]emoryCaptures/
