@@ -28,4 +28,9 @@ float4 QxTransformWorldToHClip(float3 positionWS)
     return mul(unity_MatrixVP, float4(positionWS, 1.0));
 }
 
+float Square(float v)
+{
+    return v * v;
+}
+
 #endif

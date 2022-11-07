@@ -3,9 +3,15 @@ using UnityEngine.Rendering;
 
 public class QxRenderPipeline : RenderPipeline
 {
-    public QxRenderPipeline()
+    private bool useDynamicBatching, useGPUInstancing;
+    
+    public QxRenderPipeline(
+        bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher)
     {
-        // GraphicsSettings.useScriptableRenderPipelineBatching = true;
+        this.useDynamicBatching = useDynamicBatching;
+        this.useGPUInstancing = useGPUInstancing;
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+        GraphicsSettings.lightsUseLinearIntensity = true;
     }
     
     private QxCameraRenderer renderer = new QxCameraRenderer();
@@ -15,7 +21,7 @@ public class QxRenderPipeline : RenderPipeline
     {
         foreach (var camera in cameras)
         {
-            renderer.Render(context, camera);
+            renderer.Render(context, camera, useDynamicBatching, useGPUInstancing);
         }
     }
 }

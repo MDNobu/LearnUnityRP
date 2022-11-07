@@ -15,10 +15,12 @@ public partial class QxCameraRenderer
     private CullingResults cullingResults;
 
     private static ShaderTagId unlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+    private static ShaderTagId litShaderTagId = new ShaderTagId("CustomLit");
 
+    private QxLighting lighting = new QxLighting();
     
-    
-    public void Render(ScriptableRenderContext context, Camera camera)
+    public void Render(ScriptableRenderContext context, Camera camera,
+        bool useDynamicBatching, bool useGPUInstancing)
     {
         this.context = context;
         this.camera = camera;
@@ -30,7 +32,9 @@ public partial class QxCameraRenderer
             return;
         }
         Setup();
-        DrawVisibleGeometry();
+        lighting.Setup(context, cullingResults);
+        
+        DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
         DrawLegacyShaders();
         DrawGizmos();
         Submit();
@@ -74,7 +78,7 @@ public partial class QxCameraRenderer
         context.Submit();
     }
 
-    private void DrawVisibleGeometry()
+    private void DrawVisibleGeometry(bool useDynamicBathcing, bool useGPUInstancing)
     {
         // SortingSettings sortingSettings = new SortingSettings(camera);
         SortingSettings sortingSettings = new SortingSettings(camera)
@@ -84,7 +88,12 @@ public partial class QxCameraRenderer
 
         DrawingSettings drawingSettings = new DrawingSettings(
             unlitShaderTagId, sortingSettings
-            );
+        )
+        {
+            enableDynamicBatching = useDynamicBathcing,
+            enableInstancing = useGPUInstancing
+        };
+        drawingSettings.SetShaderPassName(1, litShaderTagId);
         FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
         context.DrawRenderers(
