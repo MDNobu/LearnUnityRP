@@ -36,7 +36,7 @@ Varyings QxUnlitPassVertex(Attributes input)
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     // float3 positionWS = QxTransformLocalToWorld(positionOS);
     // return QxTransformWorldToHClip(positionWS);
-    float3 positionWS = TransformLocalToWorld(input.positionOS);
+    float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformObjectToHClip(positionWS);
 
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);

@@ -8,8 +8,8 @@
 float SpecularStrength(QxSurface surface, QxBRDF brdf, QxLight light)
 {
     float3 h = SafeNormalize(surface.viewDirection + light.direction);
-    float3 nh2 = Square(saturate(dot(surface.normal, h)));
-    float3 lh2 = Square(saturate(dot(light.direction, h)));
+    float nh2 = Square(saturate(dot(surface.normal, h)));
+    float lh2 = Square(saturate(dot(light.direction, h)));
     float r2 = Square(brdf.roughness);
     float d2 = Square(nh2 * (r2 - 1.0) + 1.00001);
     float normalization = brdf.roughness * 4.0 + 2.0;

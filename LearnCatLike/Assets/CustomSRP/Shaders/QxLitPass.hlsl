@@ -43,7 +43,7 @@ Varyings QxLitPassVertex(Attributes input)
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     // float3 positionWS = QxTransformLocalToWorld(positionOS);
     // return QxTransformWorldToHClip(positionWS);
-    output.positionWS = TransformLocalToWorld(input.positionOS);
+    output.positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformObjectToHClip(output.positionWS);
     output.normalWS = TransformObjectToWorldNormal(input.normalOS);
 
