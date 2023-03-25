@@ -75,4 +75,13 @@ public class QxCustomShaderGUI : ShaderGUI
             }
         }
     }
+
+    bool PresetButton(string name)
+    {
+        if (GUILayout.Button(name))
+        {
+        }
+
+        return true;
+    }
 }
