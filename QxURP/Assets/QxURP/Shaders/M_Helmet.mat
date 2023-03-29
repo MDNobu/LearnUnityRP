@@ -44,7 +44,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _Metallic_global: 0
-    - _Roughness_global: 0.5
+    - _Roughness_global: 0.409
     - _Use_Metal_Map: 1
     - _Use_Normal_Map: 0
     m_Colors: []

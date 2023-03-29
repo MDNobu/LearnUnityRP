@@ -6,7 +6,7 @@ Shader "QxRP/QxLightPass"
     }
     SubShader
     {
-        Cull off ZWrite off ZTest Always
+        Cull off ZWrite on ZTest Always
         Tags { 
             }
 
@@ -21,68 +21,9 @@ Shader "QxRP/QxLightPass"
 
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
-
-            #define PI 3.14159265358
-
-            // Normal Distribution
-			float Throwbridge_Reitz_GGX(float NoH, float a)
-			{
-				float a2 = a * a;
-				float NoH2 = NoH * NoH;
-
-				float nom = a2;
-				float denom = (NoH2 * (a2 - 1.0) + 1.0);
-				denom = PI * denom * denom;
-				return nom / denom;
-			}
-
-			// Fresnel
-			float3 SchlickFresnel(float HoV, float3 F0)
-			{
-				float m = clamp(1 - HoV, 0, 1);
-				float m2 = m * m;
-				float m5 = m2 * m2 * m;
-				return F0 + (1.0 - F0) * m5;
-			}
-
-			// Geometry term (shadow mask term)
-			float SchlickGGX(float NoV, float k)
-			{
-				float nom = NoV;
-				float denom = NoV * (1.0 - k) + k;
-
-				return nom / denom;
-			}
-
-			float PBR(float3 N, float3 V, float3 L, float3 albedo, float3 irradiance,
-				float roughness, float metallic)
-            {
-	            roughness = max(roughness, 0.05);
-
-            	float3 H = normalize(L + V);
-            	float NoL = max(dot(N, L), 0);
-            	float NoV = max(dot(N, V), 0);
-            	float NoH = max(dot(N, H), 0);
-            	float HoV = max(dot(H, V), 0);
-            	float roughness2 = roughness * roughness;
-            	float k = ((roughness2 + 1.0) * (roughness2 + 1.0)) / 8.0;
-            	float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
-
-            	float D = Throwbridge_Reitz_GGX(NoH, roughness2);
-            	float3 F = SchlickFresnel(HoV, F0);
-            	float G  = SchlickGGX(NoV, k) * SchlickGGX(NoL, k);
-
-            	float3 k_s = F;
-            	float3 k_d = (1.0 - k_s) * (1.0 - metallic);
-            	float3 f_diffuse = albedo / PI;
-            	float3 f_specular = (D * F * G) / (4.0 * NoV * NoL + 0.0001);
-
-            	
-            	float3 color = (k_d * f_diffuse + f_specular) * irradiance * NoL;
-            	color = NoL * irradiance *  albedo;
-            	color = N;
-            	return color;
-            }
+			#include "BRDF.cginc"
+            #include "globalUniforms.cginc"
+          
 
             struct appdata
             {
@@ -97,15 +38,9 @@ Shader "QxRP/QxLightPass"
                 float4 vertex : SV_POSITION;
             };
 
-            sampler2D _GT0;
-            sampler2D _MainTex;
-            sampler2D _GT1;
-            sampler2D _GT2;
-            sampler2D _GT3;
-            sampler2D _gdepth;
 
-            float4x4 _vpMatrix;
-            float4x4 _vpMatrixInv;
+
+
             float4 _TestLightColor;
 
             v2f vert (appdata v)
@@ -117,7 +52,7 @@ Shader "QxRP/QxLightPass"
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag (v2f i, out float depthOut : SV_Depth) : SV_Target
             {
             	float2 uv = i.uv;
             	float4 GT2 = tex2D(_GT2, uv);
@@ -125,6 +60,7 @@ Shader "QxRP/QxLightPass"
 
             	// 从GBuffer 解码数据
             	float3 albedo = tex2D(_GT0, uv).rgb;
+            	float3 normalFromText = tex2D(_GT1, uv).xyz; 
             	float3 normal = tex2D(_GT1, uv).xyz * 2.0 - 1.0;
             	float2 motionVec = GT2.rg;
             	float roughness = GT2.b;
@@ -142,17 +78,27 @@ Shader "QxRP/QxLightPass"
             	worldPos /= worldPos.w;
 
 				//
-            	float N = normalize(normal);
-            	float L = normalize(_WorldSpaceLightPos0.xyz);
+            	float3 N = normalize(normal);
+            	float3 L = normalize(_WorldSpaceLightPos0.xyz);
             	float3 V = normalize(_WorldSpaceCameraPos.xyz - worldPos);
             	float3 irradiance = _LightColor0 ;// _TestLightColor.rgb;//unity_LightColor[0].rgb;
+            	irradiance = saturate(irradiance);
 
             	// 计算光照
             	float3 color = PBR(N, V, L, albedo, irradiance, roughness, metallic);
-            	// color += emission;
 
+            	float3 ambient = IBL(
+            		N, V,
+            		albedo, roughness, metallic,
+            		_diffuseIBL, _specularIBL, _brdfLut
+            		);
 
-            	color = N;
+            	// color += ambient * occlusion;
+            	color += emission;
+
+				color = ambient;
+            	
+            	depthOut = d;
                 return float4(color, 1);
             }
             ENDCG

@@ -1,6 +1,7 @@
 ﻿using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 public class QxCameraRender
@@ -16,6 +17,21 @@ public class QxCameraRender
     private RenderTargetIdentifier[] gbufferIDs = new RenderTargetIdentifier[4];
 
     private QxLighting _lighting = new QxLighting();
+
+    public Cubemap _diffuseIBL;
+    public Cubemap _specularIBL;
+    public Texture _brdfLut;
+
+    public QxCSMSettings _csmSettings;
+
+    private QxCSM _csm;
+    
+    // 阴影的部分参数管理
+    public int shadowMapResolution = 1024;
+    public float orthoDistance = 500.0f;
+
+    private RenderTexture[] shadowTextures = new RenderTexture[4];
+    
     
     public QxCameraRender()
     {
@@ -36,6 +52,16 @@ public class QxCameraRender
         {
             gbufferIDs[i] = gbuffers[i];
         }
+
+        
+        // 创建shadow map贴图
+        for (int i = 0; i < 4; i++)
+        {
+            shadowTextures[i] = new RenderTexture(shadowMapResolution, shadowMapResolution, 24
+                , RenderTextureFormat.Depth, RenderTextureReadWrite.Linear);
+        }
+        
+        _csm = new QxCSM();
     }
     
     public void Render(ScriptableRenderContext context, Camera camera)
@@ -44,9 +70,40 @@ public class QxCameraRender
         this._camera = camera;
         
         _context.SetupCameraProperties(camera);
-        
-        
 
+        // 设置一些全局的shader 参数
+        {
+            Shader.SetGlobalTexture("_gdepth", gdepth);
+            for (int i = 0; i < 4; i++)
+            {
+                Shader.SetGlobalTexture("_GT"+i, gbuffers[i]);
+            }
+            
+            // 设置相机矩阵
+            Matrix4x4 viewMatrix = _camera.worldToCameraMatrix;
+            Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(_camera.projectionMatrix, false);
+            Matrix4x4 vpMatrix = projMatrix * viewMatrix;
+            Matrix4x4 vpMatrixInv = vpMatrix.inverse;
+            Shader.SetGlobalMatrix("_vpMatrix", vpMatrix);
+            Shader.SetGlobalMatrix("_vpMatrixInv", vpMatrixInv);
+            
+            
+            // 设置IBL 贴图
+            Shader.SetGlobalTexture("_diffuseIBL", _diffuseIBL);
+            Shader.SetGlobalTexture("_specularIBL", _specularIBL);
+            Shader.SetGlobalTexture("_brdfLut", _brdfLut);
+            
+            // 设置CSM 相关全局shader参数
+            for (int i = 0; i < 4; i++)
+            {
+                Shader.SetGlobalTexture("shadowTex"+i, shadowTextures[i]);
+                Shader.SetGlobalFloat("_split"+i, _csm.splits[i]);
+            }
+        }
+        // cmdBuffer.SetGlobalColor("_TestLightColor", Color.red);
+
+        RenderShadowDepthPass();
+        
         RenderBasePass();
        
 
@@ -64,6 +121,7 @@ public class QxCameraRender
         context.DrawRenderers(cullResults, ref drawSet, ref filterSet);
 
         
+        RenderLightPass(ref cullResults);
         
         // sky box and gizmos
         context.DrawSkybox(camera);
@@ -75,8 +133,42 @@ public class QxCameraRender
 
         // _lighting.Setup(_context, cullResults);
         
-        RenderLightPass(ref cullResults);
         context.Submit();
+    }
+
+    private void RenderShadowDepthPass()
+    {
+        Profiler.BeginSample("QxShadowDepthPass");
+        
+        // 获得光源信息
+        Light light = RenderSettings.sun;
+        Vector3 lightDir = light.transform.rotation * Vector3.forward;
+        
+        // 更新csm 分割
+        _csm.Update(_camera, lightDir);
+        _csmSettings.Set();
+        
+        _csm.CacheCameraSettings(_camera);
+        // 后面的阴影用正交投影计算
+        _camera.orthographic = true;
+
+
+        for (int level = 0; level < 4; level++)
+        {
+            // 相机移到当前split的光源位置
+            _csm.ConfigCameraToShadowSpace(_camera, lightDir, level, orthoDistance, shadowMapResolution);
+            
+            
+            
+            _context.DrawRenderers();
+            _context.Submit();
+        }
+
+        _csm.RevertMainCameraSettings(_camera);
+        _camera.orthographic = false;
+        
+        Profiler.EndSample();
+        
     }
 
     private void RenderLightPass(ref CullingResults cullResults)
@@ -85,14 +177,6 @@ public class QxCameraRender
         CommandBuffer cmdBuffer = new CommandBuffer();
         cmdBuffer.name = "lightpass";
         
-        // 设置相机矩阵
-        Matrix4x4 viewMatrix = _camera.worldToCameraMatrix;
-        Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(_camera.projectionMatrix, false);
-        Matrix4x4 vpMatrix = projMatrix * viewMatrix;
-        Matrix4x4 vpMatrixInv = vpMatrix.inverse;
-        cmdBuffer.SetGlobalMatrix("_vpMatrix", vpMatrix);
-        cmdBuffer.SetGlobalMatrix("_vpMatrixInv", vpMatrixInv);
-        // cmdBuffer.SetGlobalColor("_TestLightColor", Color.red);
         
         // 设置光源参数
         NativeArray<VisibleLight> visibleLights = cullResults.visibleLights;
@@ -109,11 +193,7 @@ public class QxCameraRender
     private void RenderBasePass()
     {
         CommandBuffer cmdBuffer = new CommandBuffer();
-        cmdBuffer.SetGlobalTexture("_gdepth", gdepth);
-        for (int i = 0; i < 4; i++)
-        {
-            cmdBuffer.SetGlobalTexture("_GT"+i, gbuffers[i]);
-        }
+        
         
         cmdBuffer.name = bufferName;
         cmdBuffer.SetRenderTarget(gbufferIDs, gdepth);

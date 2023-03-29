@@ -89,12 +89,12 @@
 					metallic = metal.r;
 					roughness = 1 - metal.a;
 				}
-				if (_Use_Normal_Map)
-				{
-					normal = UnpackNormal(tex2D(_NormalMap, i.uv));
-				}
+				// if (_Use_Normal_Map)
+				// {
+				// 	normal = UnpackNormal(tex2D(_NormalMap, i.uv));
+				// }
 				GT0 = baseColor;
-				GT1 = float4(normal, 0);
+				GT1 = float4(normal * 0.5 + 0.5, 0);
 				GT2 = float4(0, 0, roughness, metallic);
 				GT3 = float4(emission, ao);
 			}
