@@ -72,6 +72,8 @@ public class QxCameraRender
         _context.SetupCameraProperties(camera);
 
         // 设置一些全局的shader 参数
+
+        #region Setup Global Shader parameters
         {
             Shader.SetGlobalTexture("_gdepth", gdepth);
             for (int i = 0; i < 4; i++)
@@ -96,42 +98,31 @@ public class QxCameraRender
             // 设置CSM 相关全局shader参数
             for (int i = 0; i < 4; i++)
             {
-                Shader.SetGlobalTexture("shadowTex"+i, shadowTextures[i]);
+                Shader.SetGlobalTexture("_shadowTex"+i, shadowTextures[i]);
                 Shader.SetGlobalFloat("_split"+i, _csm.splits[i]);
             }
         }
+        #endregion
         // cmdBuffer.SetGlobalColor("_TestLightColor", Color.red);
 
+        _context.Submit();
+        
+        
         RenderShadowDepthPass();
         
         RenderBasePass();
-       
+        
+        RenderLightPass();
+        
+        // // sky box and gizmos
+        // context.DrawSkybox(camera);
+        // if (Handles.ShouldRenderGizmos())
+        // {
+        //     context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
+        //     context.DrawGizmos(camera, GizmoSubset.PostImageEffects);
+        // }
 
-        ScriptableCullingParameters cullingParameters;
-        // 剔除
-        camera.TryGetCullingParameters(out cullingParameters);
-        CullingResults cullResults = context.Cull(ref cullingParameters);
-        
-        // config settings
-        ShaderTagId shaderTagId = new ShaderTagId("gbuffer");
-        SortingSettings sortSet = new SortingSettings(camera);
-        DrawingSettings drawSet = new DrawingSettings(shaderTagId, sortSet);
-        FilteringSettings filterSet = FilteringSettings.defaultValue;
-        
-        context.DrawRenderers(cullResults, ref drawSet, ref filterSet);
-
-        
-        RenderLightPass(ref cullResults);
-        
-        // sky box and gizmos
-        context.DrawSkybox(camera);
-        if (Handles.ShouldRenderGizmos())
-        {
-            context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
-            context.DrawGizmos(camera, GizmoSubset.PostImageEffects);
-        }
-
-        // _lighting.Setup(_context, cullResults);
+        _lighting.Setup(_context);
         
         context.Submit();
     }
@@ -148,57 +139,112 @@ public class QxCameraRender
         _csm.Update(_camera, lightDir);
         _csmSettings.Set();
         
-        _csm.CacheCameraSettings(_camera);
-        // 后面的阴影用正交投影计算
-        _camera.orthographic = true;
-
+        _csm.CacheCameraSettings(ref _camera);
+        // _camera.orthographic = true;
+        Camera shadowCamera = GameObject.FindWithTag("Shadow").GetComponent<Camera>();
+        // shadowCamera = _camera;
+        if (shadowCamera == null)
+        {
+            Debug.Log("需要添加shadow camera");
+            return;
+        }
 
         for (int level = 0; level < 4; level++)
         {
             // 相机移到当前split的光源位置
-            _csm.ConfigCameraToShadowSpace(_camera, lightDir, level, orthoDistance, shadowMapResolution);
+            _csm.ConfigCameraToShadowSpace(ref shadowCamera, lightDir, level, orthoDistance, shadowMapResolution);
             
+            // 设置阴影矩阵，视锥分割参数
+            Matrix4x4 v = shadowCamera.worldToCameraMatrix;
+            Matrix4x4 p = GL.GetGPUProjectionMatrix(shadowCamera.projectionMatrix, false);
+            Shader.SetGlobalMatrix("_shadowVpMatrix"+level, p * v);
+            Shader.SetGlobalFloat("_orthoWidth"+level, _csm.orthoWidths[level]);
+
+            CommandBuffer cmd = new CommandBuffer();
+            cmd.name = "qxShadowmap_" + level;
+            cmd.BeginSample("qxShadowmap_" + level);
             
+            // 绘制前的准备
+            _context.SetupCameraProperties(shadowCamera);
+            cmd.SetRenderTarget(shadowTextures[level]);
+            cmd.ClearRenderTarget(true, true, Color.clear);
+            _context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
             
-            _context.DrawRenderers();
+            // 剔除
+            // ScriptableCullingParameters cullingParameters;
+            bool isCullValid = shadowCamera.TryGetCullingParameters(out var cullingParameters);
+            if (!isCullValid)
+            {
+                Debug.LogError("shadow 相机 剔除 出错");
+            }
+            var cullingResults = _context.Cull(ref cullingParameters);
+            
+            // config settings
+            ShaderTagId shaderTagId = new ShaderTagId("shadowDepthOnly");
+            SortingSettings sortingSettings = new SortingSettings(shadowCamera);
+            DrawingSettings drawSettings = new DrawingSettings(shaderTagId, sortingSettings);
+            FilteringSettings filteringSettings = FilteringSettings.defaultValue;
+            
+            _context.DrawRenderers(cullingResults, ref drawSettings, ref filteringSettings);
+            
+            cmd.EndSample("qxShadowmap_" + level);
+            _context.ExecuteCommandBuffer(cmd);
             _context.Submit();
         }
 
-        _csm.RevertMainCameraSettings(_camera);
-        _camera.orthographic = false;
+        _csm.RevertMainCameraSettings(ref _camera);
+        // _camera.orthographic = false;
         
         Profiler.EndSample();
         
     }
 
-    private void RenderLightPass(ref CullingResults cullResults)
+    private void RenderLightPass()
     {
         // 使用Blit 渲染一个全屏light pass
         CommandBuffer cmdBuffer = new CommandBuffer();
         cmdBuffer.name = "lightpass";
-        
-        
-        // 设置光源参数
-        NativeArray<VisibleLight> visibleLights = cullResults.visibleLights;
-        Vector4 mainLightColor = visibleLights[0].finalColor;
-        Vector4 mainLightDir = visibleLights[0].localToWorldMatrix.GetColumn(2);
-        
-
 
         Material mat = new Material(Shader.Find("QxRP/QxLightPass"));
         cmdBuffer.Blit(gbufferIDs[0], BuiltinRenderTextureType.CameraTarget, mat);
         _context.ExecuteCommandBuffer(cmdBuffer);
+        _context.Submit();
     }
 
     private void RenderBasePass()
     {
+        Profiler.BeginSample("BasePass");
+        
         CommandBuffer cmdBuffer = new CommandBuffer();
+        cmdBuffer.name = "basePass";
         
+        _context.SetupCameraProperties(_camera);
         
-        cmdBuffer.name = bufferName;
         cmdBuffer.SetRenderTarget(gbufferIDs, gdepth);
-
-        cmdBuffer.ClearRenderTarget(true, true, Color.red);
+        cmdBuffer.ClearRenderTarget(true, true, Color.clear);
         _context.ExecuteCommandBuffer(cmdBuffer);
+        cmdBuffer.Clear();
+        
+        // ScriptableCullingParameters cullingParameters;
+        // 剔除
+        
+        
+        if (!_camera.TryGetCullingParameters(out var cullingParameters))
+        {
+            Debug.LogError("culling 结果不对");
+        }
+        CullingResults cullResults = _context.Cull(ref cullingParameters);
+        
+        // config settings
+        ShaderTagId shaderTagId = new ShaderTagId("gbuffer");
+        SortingSettings sortSet = new SortingSettings(_camera);
+        DrawingSettings drawSet = new DrawingSettings(shaderTagId, sortSet);
+        FilteringSettings filterSet = FilteringSettings.defaultValue;
+        
+        _context.DrawRenderers(cullResults, ref drawSet, ref filterSet);
+        _context.Submit();
+        
+        Profiler.EndSample();
     }
 }

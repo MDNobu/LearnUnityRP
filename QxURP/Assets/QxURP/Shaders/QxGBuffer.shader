@@ -16,10 +16,47 @@
 	}
 	SubShader
 	{
-		Tags { "LightMode"="gbuffer" }
 
 		Pass
 		{
+			Tags {  "LightMode" = "shadowDepthOnly"}
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+			#include "UnityCG.cginc"
+
+			struct v2f
+			{
+				float4 vertex : SV_Position;
+				float2 dpeth : TEXCOORD0;
+			};
+
+			v2f vert(appdata_base vIn)
+			{
+				v2f vOut;
+				vOut.vertex = UnityObjectToClipPos(vIn.vertex);
+				vOut.dpeth = vOut.vertex.zw;
+				return vOut;
+			}
+
+			half4 frag(v2f psIn) : SV_Target0
+			{
+				float d = psIn.dpeth.x / psIn.dpeth.y;
+				#if defined (UNITY_REVERSED_Z)
+				d = 1.0 -d;
+				#endif
+
+				half4 c = EncodeFloatRGBA(d);
+				return c;
+			}
+			ENDCG
+		}
+		
+		
+		// GBuffer/Base pass
+		Pass
+		{
+			Tags {"LightMode"="gbuffer"}
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
@@ -28,10 +65,6 @@
 			#pragma enable_d3d11_debug_symbols
 			
 			#include "UnityCG.cginc"
-
-			
-
-
 			
 			struct appdata
 			{

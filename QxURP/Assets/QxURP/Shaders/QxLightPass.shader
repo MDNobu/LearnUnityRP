@@ -2,16 +2,17 @@ Shader "QxRP/QxLightPass"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader
     {
         Cull off ZWrite on ZTest Always
-        Tags { 
-            }
+
 
         Pass
         {
+	        Tags { 
+//        		"LightsMode"="ForwardBase"
+            }
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -21,8 +22,10 @@ Shader "QxRP/QxLightPass"
 
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
+            #include "Lighting.cginc"
 			#include "BRDF.cginc"
             #include "globalUniforms.cginc"
+            #include "shadow.cginc"
           
 
             struct appdata
@@ -34,21 +37,15 @@ Shader "QxRP/QxLightPass"
             struct v2f
             {
                 float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
                 float4 vertex : SV_POSITION;
             };
 
-
-
-
-            float4 _TestLightColor;
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
-                UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
 
@@ -82,10 +79,43 @@ Shader "QxRP/QxLightPass"
             	float3 L = normalize(_WorldSpaceLightPos0.xyz);
             	float3 V = normalize(_WorldSpaceCameraPos.xyz - worldPos);
             	float3 irradiance = _LightColor0 ;// _TestLightColor.rgb;//unity_LightColor[0].rgb;
-            	irradiance = saturate(irradiance);
+            	// irradiance = saturate(irradiance);
 
             	// 计算光照
-            	float3 color = PBR(N, V, L, albedo, irradiance, roughness, metallic);
+            	float3 color = float3(0, 0, 0);
+            	float3 direct = PBR(N, V, L, albedo, irradiance, roughness, metallic);
+
+            	// 计算shadow factor, 0表示在阴影中
+            	float shadowFactor = 1.0f;
+            	{
+            		
+            		float4 worldPosOffset = worldPos;
+            		worldPosOffset.xyz += normal * 0.01f;
+	             
+            		float shadow0 = ShadowMap01(worldPosOffset, _shadowTex0, _shadowVpMatrix0);
+            		float shadow1 = ShadowMap01(worldPosOffset, _shadowTex1, _shadowVpMatrix1);
+            		float shadow2 = ShadowMap01(worldPosOffset, _shadowTex2, _shadowVpMatrix2);
+            		float shadow3 = ShadowMap01(worldPosOffset, _shadowTex3, _shadowVpMatrix3);
+	             
+            		// 根据当前像素的相机空间 linear depth 选择不同的split shadow factor
+	                if (depthLinear < _split0)
+	                {
+	                    shadowFactor *= shadow0;
+	                }
+            		else if (depthLinear < _split0 + _split1)
+	                {
+	                    shadowFactor *= shadow1;
+	                }
+            		else if (depthLinear < _split0 + _split1 + _split2)
+	                {
+	                    shadowFactor *= shadow2;
+	                }
+            		else if (depthLinear < _split0 + _split1 + _split2 + _split3)
+	                {
+	                    shadowFactor *= shadow3;
+	                } 
+            	}
+            	
 
             	float3 ambient = IBL(
             		N, V,
@@ -93,10 +123,14 @@ Shader "QxRP/QxLightPass"
             		_diffuseIBL, _specularIBL, _brdfLut
             		);
 
-            	// color += ambient * occlusion;
-            	color += emission;
+            	{
+					color += direct * shadowFactor;
+            		color += emission;
+					color += ambient * occlusion;
+            	}
 
-				color = ambient;
+            	color = direct;
+            	color = irradiance;
             	
             	depthOut = d;
                 return float4(color, 1);

@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 public class QxLighting 
 {
-    public void Setup(ScriptableRenderContext context, CullingResults cullResults)
+    public void Setup(ScriptableRenderContext context)
     {
         CommandBuffer buffer = new CommandBuffer();
         buffer.name = "SetupLighting";

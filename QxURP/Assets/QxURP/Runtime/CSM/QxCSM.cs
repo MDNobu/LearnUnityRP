@@ -5,6 +5,7 @@ public class QxCSM
 {
     // csm 按view space分割的比例
     public float[] splits = {0.07f, 0.13f, 0.25f, 0.55f};
+    public float[] orthoWidths = new float[4];
     
     // 主相机视锥的8个顶点
     private Vector3[] _nearCorners = new Vector3[4];
@@ -144,6 +145,11 @@ public class QxCSM
         box1 = LightSpaceAABB(f1_near, f1_far, lightDir);
         box2 = LightSpaceAABB(f2_near, f2_far, lightDir);
         box3 = LightSpaceAABB(f3_near, f3_far, lightDir);
+
+        orthoWidths[0] = Vector3.Magnitude(f0_far[2] - f0_near[0]);
+        orthoWidths[1] = Vector3.Magnitude(f1_far[2] - f1_near[0]);
+        orthoWidths[2] = Vector3.Magnitude(f2_far[2] - f2_near[0]);
+        orthoWidths[3] = Vector3.Magnitude(f3_far[2] - f3_near[0]);
     }
 
 
@@ -164,13 +170,14 @@ public class QxCSM
         Debug.DrawLine(nearCorners[2], nearCorners[3], color);
     }
 
-    public void CacheCameraSettings(Camera camera)
+    public void CacheCameraSettings(ref Camera camera)
     {
         mainCamSettings.position = camera.transform.position;
         mainCamSettings.rotation = camera.transform.rotation;
         mainCamSettings.nearClipPlane = camera.nearClipPlane;
         mainCamSettings.farClipPlane = camera.farClipPlane;
         mainCamSettings.aspect = camera.aspect;
+        camera.orthographic = true;
     }
 
     
@@ -206,16 +213,17 @@ public class QxCSM
     }
 
     // 还原到原来的主相机参数
-    public void RevertMainCameraSettings(Camera camera)
+    public void RevertMainCameraSettings(ref Camera camera)
     {
         camera.transform.position = mainCamSettings.position;
         camera.transform.rotation = mainCamSettings.rotation;
         camera.nearClipPlane = mainCamSettings.nearClipPlane;
         camera.farClipPlane = mainCamSettings.farClipPlane;
         camera.aspect = mainCamSettings.aspect;
+        camera.orthographic = false;
     }
 
-    public void ConfigCameraToShadowSpace(Camera camera, Vector3 lightDir, int level, float orthoDistance, int shadowMapResolution)
+    public void ConfigCameraToShadowSpace(ref Camera camera, Vector3 lightDir, int level, float distance, int shadowMapResolution)
     {
         Vector3[] box = new Vector3[8];
         var f_near = new Vector3[4];
@@ -256,6 +264,32 @@ public class QxCSM
         Vector3 center = (box[3] + box[4]) / 2;
         float width = Vector3.Magnitude(box[0] - box[4]);
         float height = Vector3.Magnitude(box[0] - box[2]);
+        float len = Vector3.Magnitude(f_far[2] - f_near[0]);
+        float disPerPixel = len / shadowMapResolution;
+
+        Matrix4x4 shadowToWorld = Matrix4x4.LookAt(Vector3.zero, lightDir, Vector3.up);
+        Matrix4x4 worldToShadow = shadowToWorld.inverse;
+
+        // #TODO 这里这段的意图是???
+
+        #region 修改 center position
+
+        // center = matTransform(worldToShadow, center, 1.0f);
+        // for (int i = 0; i < 3; i++)
+        // {
+        //     center[i] = Mathf.Floor(center[i] / disPerPixel) * disPerPixel;
+        // }
+        // center = matTransform(worldToShadow, center, 1.0f);
+        #endregion
         
+        
+        // 配置相机
+        camera.transform.rotation = Quaternion.LookRotation(lightDir);
+        camera.transform.position = center;
+        camera.nearClipPlane = -distance;
+        camera.farClipPlane = distance;
+        camera.aspect = width / height;
+        camera.orthographicSize = height * 0.5f;
     }
+    
 }

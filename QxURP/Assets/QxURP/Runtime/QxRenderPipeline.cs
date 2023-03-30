@@ -25,7 +25,10 @@ public class QxRenderPipeline : RenderPipeline
         
         foreach (var camera in cameras)
         {
-            renderer.Render(context, camera);
+            if (!camera.CompareTag("Shadow"))
+            {
+                renderer.Render(context, camera);
+            }
         }
     }
 }
