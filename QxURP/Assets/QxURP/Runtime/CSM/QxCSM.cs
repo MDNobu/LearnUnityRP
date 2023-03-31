@@ -47,6 +47,7 @@ public class QxCSM
     }
     
     // 计算光源方向包围盒的世界坐标
+    // 现在这里的实现是 fit to scene的
     Vector3[] LightSpaceAABB(Vector3[] nearCorners, Vector3[] farCorners, Vector3 lightDir)
     {
         // lightDir = Vector3.forward;
@@ -264,7 +265,8 @@ public class QxCSM
         Vector3 center = (box[3] + box[4]) / 2;
         float width = Vector3.Magnitude(box[0] - box[4]);
         float height = Vector3.Magnitude(box[0] - box[2]);
-        float len = Vector3.Magnitude(f_far[2] - f_near[0]);
+        //选择这里作为len的原因是为了防止相机旋转时，shadow volume split快速的变化
+        float len = Vector3.Magnitude(f_far[2] - f_near[0]);//Mathf.Max(height, width);//
         float disPerPixel = len / shadowMapResolution;
 
         Matrix4x4 shadowToWorld = Matrix4x4.LookAt(Vector3.zero, lightDir, Vector3.up);
@@ -273,13 +275,12 @@ public class QxCSM
         // #TODO 这里这段的意图是???
 
         #region 修改 center position
-
-        // center = matTransform(worldToShadow, center, 1.0f);
-        // for (int i = 0; i < 3; i++)
-        // {
-        //     center[i] = Mathf.Floor(center[i] / disPerPixel) * disPerPixel;
-        // }
-        // center = matTransform(worldToShadow, center, 1.0f);
+        center = matTransform(worldToShadow, center, 1.0f);
+        for (int i = 0; i < 3; i++)
+        {
+            center[i] = Mathf.Floor(center[i] / disPerPixel) * disPerPixel;
+        }
+        center = matTransform(shadowToWorld, center, 1.0f);
         #endregion
         
         

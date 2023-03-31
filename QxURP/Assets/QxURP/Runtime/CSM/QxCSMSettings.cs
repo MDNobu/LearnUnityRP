@@ -1,4 +1,6 @@
 ﻿
+using UnityEngine;
+
 [System.Serializable]
 public class QxCSMSettings
 {
@@ -18,7 +20,8 @@ public class QxCSMSettings
 
         for (int i = 0; i < 4; i++)
         {
-            
+            Shader.SetGlobalFloat("_shadowNormalBias"+i, levels[i].shadowNormalBias);
         }
+        Shader.SetGlobalFloat("_usingShadowMask", usingShadowMask ? 1.0f : 0.0f);
     }
 }

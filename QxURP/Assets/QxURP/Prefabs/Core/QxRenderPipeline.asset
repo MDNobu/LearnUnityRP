@@ -12,3 +12,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 674adc542a4f4d23978ad3041cb22d76, type: 3}
   m_Name: QxRenderPipeline
   m_EditorClassIdentifier: 
+  diffuseIBL: {fileID: 0}
+  specularIBL: {fileID: 0}
+  brdfLut: {fileID: 0}
+  csmSettings:
+    maxDistance: 200
+    usingShadowMask: 0
+    level0:
+      shadowNormalBias: 0.001
+      depthNormalBias: 0.005
+      pcssSearchRadius: 1
+      pcssFilterRadius: 7
+    level1:
+      shadowNormalBias: 0.005
+      depthNormalBias: 0.005
+      pcssSearchRadius: 1
+      pcssFilterRadius: 7
+    level2:
+      shadowNormalBias: 0.001
+      depthNormalBias: 0.005
+      pcssSearchRadius: 1
+      pcssFilterRadius: 7
+    level3:
+      shadowNormalBias: 0.001
+      depthNormalBias: 0.005
+      pcssSearchRadius: 1
+      pcssFilterRadius: 7

@@ -1,3 +1,5 @@
+// Upgrade NOTE: replaced 'defined DebugShadowMap' with 'defined (DebugShadowMap)'
+
 Shader "QxRP/QxLightPass"
 {
     Properties
@@ -49,6 +51,8 @@ Shader "QxRP/QxLightPass"
                 return o;
             }
 
+            #define  DebugShadowMap  0
+            
             fixed4 frag (v2f i, out float depthOut : SV_Depth) : SV_Target
             {
             	float2 uv = i.uv;
@@ -86,35 +90,38 @@ Shader "QxRP/QxLightPass"
             	float3 direct = PBR(N, V, L, albedo, irradiance, roughness, metallic);
 
             	// 计算shadow factor, 0表示在阴影中
-            	float shadowFactor = 1.0f;
+            	float visbility = 1.0f;
+            	visbility = tex2D(_shadowStrength, uv).r;
             	{
-            		
-            		float4 worldPosOffset = worldPos;
-            		worldPosOffset.xyz += normal * 0.01f;
-	             
-            		float shadow0 = ShadowMap01(worldPosOffset, _shadowTex0, _shadowVpMatrix0);
-            		float shadow1 = ShadowMap01(worldPosOffset, _shadowTex1, _shadowVpMatrix1);
-            		float shadow2 = ShadowMap01(worldPosOffset, _shadowTex2, _shadowVpMatrix2);
-            		float shadow3 = ShadowMap01(worldPosOffset, _shadowTex3, _shadowVpMatrix3);
-	             
-            		// 根据当前像素的相机空间 linear depth 选择不同的split shadow factor
-	                if (depthLinear < _split0)
-	                {
-	                    shadowFactor *= shadow0;
-	                }
-            		else if (depthLinear < _split0 + _split1)
-	                {
-	                    shadowFactor *= shadow1;
-	                }
-            		else if (depthLinear < _split0 + _split1 + _split2)
-	                {
-	                    shadowFactor *= shadow2;
-	                }
-            		else if (depthLinear < _split0 + _split1 + _split2 + _split3)
-	                {
-	                    shadowFactor *= shadow3;
-	                } 
+            		// float4 worldPosOffset = worldPos;
+            		// worldPosOffset.xyz += normal * 0.01f;
+	             //
+            		// float shadow0 = ShadowMap01(worldPosOffset, _shadowTex0, _shadowVpMatrix0);
+            		// float shadow1 = ShadowMap01(worldPosOffset, _shadowTex1, _shadowVpMatrix1);
+            		// float shadow2 = ShadowMap01(worldPosOffset, _shadowTex2, _shadowVpMatrix2);
+            		// float shadow3 = ShadowMap01(worldPosOffset, _shadowTex3, _shadowVpMatrix3);
+	             //
+            		// // 根据当前像素的相机空间 linear depth 选择不同的split shadow factor
+	             //    if (depthLinear < _split0)
+	             //    {
+	             //        visbility *= shadow0;
+	             //    }
+            		// else if (depthLinear < _split0 + _split1)
+	             //    {
+	             //        visbility *= shadow1;
+	             //    }
+            		// else if (depthLinear < _split0 + _split1 + _split2)
+	             //    {
+	             //        visbility *= shadow2;
+	             //    }
+            		// else if (depthLinear < _split0 + _split1 + _split2 + _split3)
+	             //    {
+	             //        visbility *= shadow3;
+	             //    } 
             	}
+
+            	
+            	
             	
 
             	float3 ambient = IBL(
@@ -124,15 +131,35 @@ Shader "QxRP/QxLightPass"
             		);
 
             	{
-					color += direct * shadowFactor;
+					color += direct * visbility;
             		color += emission;
 					color += ambient * occlusion;
             	}
 
-            	color = direct;
-            	color = irradiance;
+            	color = direct * visbility;
+            	color = visbility;
             	
             	depthOut = d;
+
+            	#if DebugShadowMap
+            	// 根据当前像素的相机空间 linear depth 选择不同的split shadow factor
+                if (depthLinear < _split0)
+                {
+                    color *= float3(1, 0, 0);
+                }
+            	else if (depthLinear < _split0 + _split1)
+                {
+                    color *= float3(0, 1, 0);
+                }
+            	else if (depthLinear < _split0 + _split1 + _split2)
+                {
+                    color *= float3(0, 0, 1);
+                }
+            	else if (depthLinear < _split0 + _split1 + _split2 + _split3)
+                {
+                    color *= float3(1, 1, 0);
+                } 
+            	#endif
                 return float4(color, 1);
             }
             ENDCG

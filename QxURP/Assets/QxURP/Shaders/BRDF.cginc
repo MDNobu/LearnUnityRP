@@ -62,7 +62,6 @@ float3 PBR(float3 N, float3 V, float3 L, float3 albedo, float3 irradiance,
     float3 color = (k_d * f_diffuse + f_specular) * irradiance * NoL;
     // color = albedo;
 
-    color = NoL;
     // color = NoL;
     // color = f_specular  * NoL * irradiance;
     // color = diffuseTerm + specularTerm;

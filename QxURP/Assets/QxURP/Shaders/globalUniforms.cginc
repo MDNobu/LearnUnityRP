@@ -13,6 +13,15 @@ sampler2D _shadowTex0;
 sampler2D _shadowTex1;
 sampler2D _shadowTex2;
 sampler2D _shadowTex3;
+sampler2D _shadowStrength;
+sampler2D _shadoMask;
+
+float _usingShadowMask;
+
+float _shadowNormalBias0;
+float _shadowNormalBias1;
+float _shadowNormalBias2;
+float _shadowNormalBias3;
 
 
 float4x4 _vpMatrix;
@@ -27,3 +36,6 @@ float _split0;
 float _split1;
 float _split2;
 float _split3;
+
+float _shadowmapResolution;
+

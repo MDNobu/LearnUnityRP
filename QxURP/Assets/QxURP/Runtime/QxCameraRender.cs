@@ -16,6 +16,7 @@ public class QxCameraRender
     private RenderTexture[] gbuffers = new RenderTexture[4];
     private RenderTargetIdentifier[] gbufferIDs = new RenderTargetIdentifier[4];
 
+    
     private QxLighting _lighting = new QxLighting();
 
     public Cubemap _diffuseIBL;
@@ -31,8 +32,9 @@ public class QxCameraRender
     public float orthoDistance = 500.0f;
 
     private RenderTexture[] shadowTextures = new RenderTexture[4];
-    
-    
+    private RenderTexture shadowMask;
+    private RenderTexture shadowStrength;
+
     public QxCameraRender()
     {
         // 创建GBuffer用的纹理
@@ -53,7 +55,11 @@ public class QxCameraRender
             gbufferIDs[i] = gbuffers[i];
         }
 
-        
+
+        shadowMask = new RenderTexture(Screen.width / 4, Screen.height / 4,
+            0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+        shadowStrength = new RenderTexture(Screen.width, Screen.height,
+            0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
         // 创建shadow map贴图
         for (int i = 0; i < 4; i++)
         {
@@ -63,68 +69,114 @@ public class QxCameraRender
         
         _csm = new QxCSM();
     }
+
+    private void SetupGlobalShaderParams()
+    {
+        Shader.SetGlobalTexture("_gdepth", gdepth);
+        for (int i = 0; i < 4; i++)
+        {
+            Shader.SetGlobalTexture("_GT"+i, gbuffers[i]);
+        }
+            
+        // 设置相机矩阵
+        Matrix4x4 viewMatrix = _camera.worldToCameraMatrix;
+        Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(_camera.projectionMatrix, false);
+        Matrix4x4 vpMatrix = projMatrix * viewMatrix;
+        Matrix4x4 vpMatrixInv = vpMatrix.inverse;
+        Shader.SetGlobalMatrix("_vpMatrix", vpMatrix);
+        Shader.SetGlobalMatrix("_vpMatrixInv", vpMatrixInv);
+            
+            
+        // 设置IBL 贴图
+        Shader.SetGlobalTexture("_diffuseIBL", _diffuseIBL);
+        Shader.SetGlobalTexture("_specularIBL", _specularIBL);
+        Shader.SetGlobalTexture("_brdfLut", _brdfLut);
+            
+        // 设置CSM 相关全局shader参数
+        Shader.SetGlobalFloat("_shadowmapResolution", shadowMapResolution);
+        Shader.SetGlobalTexture("_shadowStrength", shadowStrength);
+        Shader.SetGlobalTexture("_shadoMask", shadowMask);
+        for (int i = 0; i < 4; i++)
+        {
+            Shader.SetGlobalTexture("_shadowTex"+i, shadowTextures[i]);
+            Shader.SetGlobalFloat("_split"+i, _csm.splits[i]);
+        }
+        
+    }
     
     public void Render(ScriptableRenderContext context, Camera camera)
     {
         this._context = context;
         this._camera = camera;
         
-        _context.SetupCameraProperties(camera);
+        // _context.SetupCameraProperties(camera);
 
         // 设置一些全局的shader 参数
-
-        #region Setup Global Shader parameters
-        {
-            Shader.SetGlobalTexture("_gdepth", gdepth);
-            for (int i = 0; i < 4; i++)
-            {
-                Shader.SetGlobalTexture("_GT"+i, gbuffers[i]);
-            }
-            
-            // 设置相机矩阵
-            Matrix4x4 viewMatrix = _camera.worldToCameraMatrix;
-            Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(_camera.projectionMatrix, false);
-            Matrix4x4 vpMatrix = projMatrix * viewMatrix;
-            Matrix4x4 vpMatrixInv = vpMatrix.inverse;
-            Shader.SetGlobalMatrix("_vpMatrix", vpMatrix);
-            Shader.SetGlobalMatrix("_vpMatrixInv", vpMatrixInv);
-            
-            
-            // 设置IBL 贴图
-            Shader.SetGlobalTexture("_diffuseIBL", _diffuseIBL);
-            Shader.SetGlobalTexture("_specularIBL", _specularIBL);
-            Shader.SetGlobalTexture("_brdfLut", _brdfLut);
-            
-            // 设置CSM 相关全局shader参数
-            for (int i = 0; i < 4; i++)
-            {
-                Shader.SetGlobalTexture("_shadowTex"+i, shadowTextures[i]);
-                Shader.SetGlobalFloat("_split"+i, _csm.splits[i]);
-            }
-        }
-        #endregion
-        // cmdBuffer.SetGlobalColor("_TestLightColor", Color.red);
-
-        _context.Submit();
-        
+        SetupGlobalShaderParams();
         
         RenderShadowDepthPass();
         
         RenderBasePass();
+
+        RenderShadowProjectionPass();
         
+        // _context.SetupCameraProperties(_camera);
         RenderLightPass();
         
-        // // sky box and gizmos
-        // context.DrawSkybox(camera);
-        // if (Handles.ShouldRenderGizmos())
-        // {
-        //     context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
-        //     context.DrawGizmos(camera, GizmoSubset.PostImageEffects);
-        // }
+        // sky box and gizmos
+        context.DrawSkybox(camera);
+        if (Handles.ShouldRenderGizmos())
+        {
+            context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
+            context.DrawGizmos(camera, GizmoSubset.PostImageEffects);
+        }
 
-        _lighting.Setup(_context);
+        // _lighting.Setup(_context);
         
         context.Submit();
+    }
+
+    private void RenderShadowProjectionPass()
+    {
+        CommandBuffer cmdBuffer = new CommandBuffer();
+        cmdBuffer.name = "qxShadowProjection";
+        cmdBuffer.BeginSample("qxShadowProjection");
+        
+        RenderTexture tempTex1 = RenderTexture.GetTemporary(
+            Screen.width/4, Screen.height/4, 
+            0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+        RenderTexture tempTex2 = RenderTexture.GetTemporary(
+            Screen.width/4, Screen.height/4,
+            0, RenderTextureFormat.R8,
+            RenderTextureReadWrite.Linear
+            );
+        RenderTexture tempTex3 = RenderTexture.GetTemporary(
+            Screen.width, Screen.height,
+            0, RenderTextureFormat.R8,
+            RenderTextureReadWrite.Linear
+            );
+
+        if (_csmSettings.usingShadowMask)
+        {
+            cmdBuffer.Blit(gbufferIDs[0], tempTex1, 
+                new Material(Shader.Find("QxRP/preshadowmappingpass")));
+            cmdBuffer.Blit(tempTex1, tempTex2, 
+                new Material(Shader.Find("QxRP/blurNx1")));
+            cmdBuffer.Blit(tempTex2, shadowMask, 
+                new Material(Shader.Find("QxRP/blur1XN")));
+        }
+        
+        cmdBuffer.Blit(gbufferIDs[0], tempTex3, new Material(Shader.Find("QxRP/shadowProjectionPass")));
+        cmdBuffer.Blit(tempTex3, shadowStrength, new Material(Shader.Find("QxRP/blurNXN")));
+        
+        
+        RenderTexture.ReleaseTemporary(tempTex1);
+        RenderTexture.ReleaseTemporary(tempTex2);
+        RenderTexture.ReleaseTemporary(tempTex3);
+        
+        cmdBuffer.EndSample("qxShadowProjection");
+        _context.ExecuteCommandBuffer(cmdBuffer);
+        _context.Submit();
     }
 
     private void RenderShadowDepthPass()
@@ -139,7 +191,7 @@ public class QxCameraRender
         _csm.Update(_camera, lightDir);
         _csmSettings.Set();
         
-        _csm.CacheCameraSettings(ref _camera);
+        // _csm.CacheCameraSettings(ref _camera);
         // _camera.orthographic = true;
         Camera shadowCamera = GameObject.FindWithTag("Shadow").GetComponent<Camera>();
         // shadowCamera = _camera;
@@ -193,11 +245,10 @@ public class QxCameraRender
             _context.Submit();
         }
 
-        _csm.RevertMainCameraSettings(ref _camera);
+        // _csm.RevertMainCameraSettings(ref _camera);
         // _camera.orthographic = false;
         
         Profiler.EndSample();
-        
     }
 
     private void RenderLightPass()
