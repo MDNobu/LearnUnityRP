@@ -8,7 +8,7 @@ public class QxRenderPipelineAssets : RenderPipelineAsset
     public Cubemap diffuseIBL;
     public Cubemap specularIBL;
     public Texture brdfLut;
-
+    public Texture blueNoiseTex;
 
     [SerializeField]
     public QxCSMSettings csmSettings;
@@ -21,6 +21,7 @@ public class QxRenderPipelineAssets : RenderPipelineAsset
         renderPipeline._specularIBL = specularIBL;
         renderPipeline.brdfLut = brdfLut;
         renderPipeline._csmSettings = csmSettings;
+        renderPipeline.blurNoiseTex = blueNoiseTex;
         return renderPipeline;
     }
 }

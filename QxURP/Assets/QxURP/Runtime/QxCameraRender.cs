@@ -11,6 +11,9 @@ public class QxCameraRender
 
     private const string bufferName = "gbuffer";
 
+    // 噪声图
+    public Texture blurNoiseTex;
+
     // gbuffer render textures
     private RenderTexture gdepth;
     private RenderTexture[] gbuffers = new RenderTexture[4];
@@ -77,6 +80,13 @@ public class QxCameraRender
         {
             Shader.SetGlobalTexture("_GT"+i, gbuffers[i]);
         }
+        
+        Shader.SetGlobalFloat("_far", _camera.farClipPlane);
+        Shader.SetGlobalFloat("_near", _camera.nearClipPlane);
+        Shader.SetGlobalFloat("_screenWidth", Screen.width);
+        Shader.SetGlobalFloat("_screenHeight", Screen.height);
+        Shader.SetGlobalTexture("_noiseTex", blurNoiseTex);
+        Shader.SetGlobalFloat("_noiseTexResolution", blurNoiseTex.width);
             
         // 设置相机矩阵
         Matrix4x4 viewMatrix = _camera.worldToCameraMatrix;
@@ -96,6 +106,7 @@ public class QxCameraRender
         Shader.SetGlobalFloat("_shadowmapResolution", shadowMapResolution);
         Shader.SetGlobalTexture("_shadowStrength", shadowStrength);
         Shader.SetGlobalTexture("_shadoMask", shadowMask);
+        Shader.SetGlobalFloat("_orthoDistance", orthoDistance);
         for (int i = 0; i < 4; i++)
         {
             Shader.SetGlobalTexture("_shadowTex"+i, shadowTextures[i]);
@@ -166,9 +177,10 @@ public class QxCameraRender
                 new Material(Shader.Find("QxRP/blur1XN")));
         }
         
-        cmdBuffer.Blit(gbufferIDs[0], tempTex3, new Material(Shader.Find("QxRP/shadowProjectionPass")));
-        cmdBuffer.Blit(tempTex3, shadowStrength, new Material(Shader.Find("QxRP/blurNXN")));
-        
+        // cmdBuffer.Blit(gbufferIDs[0], tempTex3, new Material(Shader.Find("QxRP/shadowProjectionPass")));
+        // cmdBuffer.Blit(tempTex3, shadowStrength, new Material(Shader.Find("QxRP/blurNXN")));
+        cmdBuffer.Blit(gbufferIDs[0], shadowStrength, new Material(Shader.Find("QxRP/shadowProjectionPass")));
+
         
         RenderTexture.ReleaseTemporary(tempTex1);
         RenderTexture.ReleaseTemporary(tempTex2);

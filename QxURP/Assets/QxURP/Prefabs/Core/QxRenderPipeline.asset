@@ -15,26 +15,27 @@ MonoBehaviour:
   diffuseIBL: {fileID: 0}
   specularIBL: {fileID: 0}
   brdfLut: {fileID: 0}
+  blueNoiseTex: {fileID: 2800000, guid: c216dc3d1d6abfb43afedb78533e6122, type: 3}
   csmSettings:
     maxDistance: 200
     usingShadowMask: 0
     level0:
-      shadowNormalBias: 0.001
+      shadowNormalBias: 0.002
       depthNormalBias: 0.005
-      pcssSearchRadius: 1
-      pcssFilterRadius: 7
+      pcssSearchRadius: 0.3
+      pcssFilterRadius: 5
     level1:
-      shadowNormalBias: 0.005
+      shadowNormalBias: 0.002
       depthNormalBias: 0.005
-      pcssSearchRadius: 1
-      pcssFilterRadius: 7
+      pcssSearchRadius: 0.75
+      pcssFilterRadius: 5
     level2:
-      shadowNormalBias: 0.001
-      depthNormalBias: 0.005
-      pcssSearchRadius: 1
-      pcssFilterRadius: 7
+      shadowNormalBias: 0.002
+      depthNormalBias: 0.01
+      pcssSearchRadius: 0.75
+      pcssFilterRadius: 5
     level3:
-      shadowNormalBias: 0.001
-      depthNormalBias: 0.005
+      shadowNormalBias: 0.002
+      depthNormalBias: 0.01
       pcssSearchRadius: 1
-      pcssFilterRadius: 7
+      pcssFilterRadius: 3

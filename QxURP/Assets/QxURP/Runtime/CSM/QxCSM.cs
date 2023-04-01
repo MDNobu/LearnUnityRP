@@ -5,6 +5,7 @@ public class QxCSM
 {
     // csm 按view space分割的比例
     public float[] splits = {0.07f, 0.13f, 0.25f, 0.55f};
+    // 4个光源视锥的宽度,
     public float[] orthoWidths = new float[4];
     
     // 主相机视锥的8个顶点

@@ -21,6 +21,9 @@ public class QxCSMSettings
         for (int i = 0; i < 4; i++)
         {
             Shader.SetGlobalFloat("_shadowNormalBias"+i, levels[i].shadowNormalBias);
+            Shader.SetGlobalFloat("_depthNormalBias"+i, levels[i].depthNormalBias);
+            Shader.SetGlobalFloat("_pcssSearchRadius"+i, levels[i].pcssSearchRadius);
+            Shader.SetGlobalFloat("_pcssFilterRadius"+i, levels[i].pcssFilterRadius);
         }
         Shader.SetGlobalFloat("_usingShadowMask", usingShadowMask ? 1.0f : 0.0f);
     }

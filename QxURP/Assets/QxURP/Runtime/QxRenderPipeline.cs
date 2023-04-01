@@ -11,7 +11,7 @@ public class QxRenderPipeline : RenderPipeline
     public Cubemap _diffuseIBL;
     public Cubemap _specularIBL;
     public Texture brdfLut;
-
+    public Texture blurNoiseTex;
 
     public QxCSMSettings _csmSettings;
     
@@ -22,6 +22,7 @@ public class QxRenderPipeline : RenderPipeline
         renderer._specularIBL = _specularIBL;
         renderer._brdfLut = brdfLut;
         renderer._csmSettings = _csmSettings;
+        renderer.blurNoiseTex = blurNoiseTex;
         
         foreach (var camera in cameras)
         {
