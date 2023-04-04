@@ -29,6 +29,9 @@ public class QxCameraRender
     public QxCSMSettings _csmSettings;
 
     private QxCSM _csm;
+
+    // 光照管理
+    private QxClusterLight _clusterLight;
     
     // 阴影的部分参数管理
     public int shadowMapResolution = 1024;
@@ -124,6 +127,8 @@ public class QxCameraRender
 
         // 设置一些全局的shader 参数
         SetupGlobalShaderParams();
+
+        // RenderClusterLightingPass();
         
         RenderShadowDepthPass();
         
@@ -145,6 +150,25 @@ public class QxCameraRender
         // _lighting.Setup(_context);
         
         context.Submit();
+    }
+
+    private void RenderClusterLightingPass()
+    {
+        // unity 内置的裁剪光源,这个是基于相机的视锥?
+        _camera.TryGetCullingParameters(out var cullingParameters);
+        var cullingResults = _context.Cull(ref cullingParameters);
+        
+        // 光源信息上传到GPU
+        _clusterLight.UpdateLightBuffer(cullingResults.visibleLights.ToArray());
+        
+        // 划分cluster
+        _clusterLight.GenerateCluster(_camera);
+        
+        // 给cluster分配光源
+        _clusterLight.LightAssign();
+        
+        // 传递参数
+        _clusterLight.SetupShaderPrameters();
     }
 
     private void RenderShadowProjectionPass()

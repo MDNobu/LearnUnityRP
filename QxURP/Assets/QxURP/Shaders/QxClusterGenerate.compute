@@ -1,0 +1,88 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel ClusterGenerate
+
+#include "UnityCG.cginc"
+
+// 每个cluster 平截头体的8个顶点
+struct ClusterFustum
+{
+    float3 p0, p1, p2, p3, p4, p5, p6, p7;
+};
+
+RWStructuredBuffer<ClusterFustum> _clusterBufffer;
+
+float4x4 _viewMatrix;
+float4x4 _viewMatrixInv;
+float4x4 _vpMatrix;
+float4x4 _vpMatrixInv;
+float _near;
+float _far;
+float _fovh;
+float _numClusterX;
+float _numClusterY;
+float _numClusterZ;
+
+uint Index3DTo1D(uint3 index3D)
+{
+    return index3D.z * _numClusterX * _numClusterY +
+            index3D.y * _numClusterX +
+            index3D.x;
+}
+
+// 输入0~1 输出-1~1
+float UVSpaceToScreenSpace(float inUV)
+{
+    return inUV * 2 - 1;
+}
+
+float3 MatTransformProj(float4x4 inVPMatrixInv, float3 inPositionNDC)
+{
+    float4 positionWS = mul(inVPMatrixInv, float4(inPositionNDC, 1));
+    positionWS /= positionWS.w;
+    return positionWS.xyz;
+}
+
+// 一个thread 输出一个frustum值
+[numthreads(16,16,16)]
+void ClusterGenerate (
+    uint3 gtid : SV_GroupThreadID,
+    uint3 gid : SV_GroupID
+    )
+{
+    //cluster ID
+    uint i = gtid.x, j = gtid.y, k = gid.x;
+    uint3 clusterID_3D = uint3(i,j,k);
+    uint clusterID_1D = Index3DTo1D(clusterID_3D);
+
+    // NDC视锥tile
+    float xMin = UVSpaceToScreenSpace(i / _numClusterX);
+    float yMin = UVSpaceToScreenSpace(j / _numClusterY);
+    float xMax = UVSpaceToScreenSpace((i + 1)/_numClusterX);
+    float yMax = UVSpaceToScreenSpace((j + 1)/_numClusterY);
+    float zMin = k / _numClusterZ;
+    float zMax = (k + 1) / _numClusterZ;
+
+    // 反转投影求cluster 视锥世界空间坐标
+    float p0 = MatTransformProj(_vpMatrixInv, float3(xMin, yMin, 0));
+    float p1 = MatTransformProj(_vpMatrixInv, float3(xMin, yMin, 1));
+    float p2 = MatTransformProj(_vpMatrixInv, float3(xMin, yMax, 0));
+    float p3 = MatTransformProj(_vpMatrixInv, float3(xMin, yMax, 1));
+    float p4 = MatTransformProj(_vpMatrixInv, float3(xMax, yMin, 0));
+    float p5 = MatTransformProj(_vpMatrixInv, float3(xMax, yMin, 1));
+    float p6 = MatTransformProj(_vpMatrixInv, float3(xMax, yMax, 0));
+    float p7 = MatTransformProj(_vpMatrixInv, float3(xMax, yMax, 1));
+
+    // 世界空间根据k切分cluster frustum
+    ClusterFustum frustum;
+    frustum.p0 = p0 + (p1 - p0) * zMin;
+    frustum.p1 = p0 + (p1 - p0) * zMax;
+    frustum.p2 = p2 + (p3 - p2) * zMin;
+    frustum.p3 = p2 + (p3 - p2) * zMax;
+    frustum.p4 = p4 + (p5 - p4) * zMin;
+    frustum.p5 = p4 + (p5 - p4) * zMax;
+    frustum.p6 = p6 + (p7 - p6) * zMin;
+    frustum.p7 = p6 + (p7 - p6) * zMax;
+
+
+    _clusterBufffer[clusterID_1D] = frustum;
+}
