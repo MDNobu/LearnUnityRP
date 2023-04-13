@@ -66,7 +66,7 @@ void LightAssign(
     // cluster id
     uint i = grid.x, j = grid.y, k = gid.x;
     uint3 clusterID_3D = uint3(i,j,k);
-    uint3 clusterID_1D = Index3DTo1D(clusterID_3D);
+    uint clusterID_1D = Index3DTo1D(clusterID_3D);
 
     ClusterFustum frustum = _clusterBuffer[clusterID_1D];
 

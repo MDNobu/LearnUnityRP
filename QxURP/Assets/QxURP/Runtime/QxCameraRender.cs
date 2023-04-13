@@ -74,6 +74,8 @@ public class QxCameraRender
         }
         
         _csm = new QxCSM();
+
+        _clusterLight = new QxClusterLight();
     }
 
     private void SetupGlobalShaderParams()
@@ -154,6 +156,9 @@ public class QxCameraRender
 
     private void RenderClusterLightingPass()
     {
+        CommandBuffer cmdBuffer = new CommandBuffer();
+        cmdBuffer.BeginSample("ClusterLight");
+        
         // unity 内置的裁剪光源,这个是基于相机的视锥?
         _camera.TryGetCullingParameters(out var cullingParameters);
         var cullingResults = _context.Cull(ref cullingParameters);
@@ -169,6 +174,9 @@ public class QxCameraRender
         
         // 传递参数
         _clusterLight.SetupShaderPrameters();
+        
+        cmdBuffer.EndSample("ClusterLight");
+        _context.ExecuteCommandBuffer(cmdBuffer);
     }
 
     private void RenderShadowProjectionPass()

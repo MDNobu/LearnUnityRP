@@ -56,13 +56,17 @@ public class QxClusterLight
         int numClusters = numClusterX * numClusterY * numClusterZ;
 
         // Assert.AreEqual(sizeof(PointLight), SIZE_OF_LIGHT);
-        lightBuffer = new ComputeBuffer(maxNumLights, SIZE_OF_LIGHT);
-        clusterBuffer = new ComputeBuffer(numClusters, SIZE_OF_CLUSTERTBOX);
-        lightAssignBuffer = new ComputeBuffer(numClusters * maxNumLightsPerCluster, sizeof(uint));
-        assignTable = new ComputeBuffer(numClusters, SIZE_OF_INDEX);
+        lightBuffer = new ComputeBuffer(maxNumLights, SIZE_OF_LIGHT);//, ComputeBufferType.Default, ComputeBufferMode.Dynamic);
+        clusterBuffer = new ComputeBuffer(numClusters, SIZE_OF_CLUSTERTBOX);//, ComputeBufferType.Default, ComputeBufferMode.Dynamic);
+        lightAssignBuffer = new ComputeBuffer(numClusters * maxNumLightsPerCluster, sizeof(uint));//, ComputeBufferType.Default, ComputeBufferMode.Dynamic);
+        assignTable = new ComputeBuffer(numClusters, SIZE_OF_INDEX);//, ComputeBufferType.Default, ComputeBufferMode.Dynamic);
 
         clusterGenerateCS = Resources.Load<ComputeShader>("Shaders/QxClusterGenerate");
         lightAssignCS = Resources.Load<ComputeShader>("Shaders/QxLightAssign");
+        if (clusterGenerateCS == null || lightAssignCS == null)
+        {
+            Debug.LogError("Do not find shader");
+        }
     }
 
     ~QxClusterLight()
@@ -78,7 +82,7 @@ public class QxClusterLight
         PointLight[] pointLights = new PointLight[maxNumLights];
 
         int cunt = 0;
-        for (int i = 0; i < maxNumLights; i++)
+        for (int i = 0; i < maxNumLights && i < inLights.Length; i++)
         {
             Light curLight = inLights[i].light;
             if (curLight.type == LightType.Point)
@@ -103,7 +107,7 @@ public class QxClusterLight
         PointLight[] pointLights = new PointLight[maxNumLights];
 
         int cunt = 0;
-        for (int i = 0; i < maxNumLights; i++)
+        for (int i = 0; i < maxNumLights && i < inLights.Length; i++)
         {
             Light curLight = inLights[i];
             if (curLight.type == LightType.Point)
@@ -144,7 +148,7 @@ public class QxClusterLight
         clusterGenerateCS.SetFloat("_numClusterZ", numClusterZ);
 
         int kid = clusterGenerateCS.FindKernel("ClusterGenerate");
-        clusterGenerateCS.SetBuffer(kid, "_clusterBufffer", clusterBuffer);
+        clusterGenerateCS.SetBuffer(kid, "_clusterBuffer", clusterBuffer);
         clusterGenerateCS.Dispatch(kid, numClusterZ, 1, 1);
     }
 

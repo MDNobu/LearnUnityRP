@@ -6,9 +6,11 @@ public class QxClusterDebug : MonoBehaviour
 {
     private QxClusterLight _clusterLightLight;
 
+    public bool generateClusterLight = false;
+
     private void Update()
     {
-        if (_clusterLightLight == null)
+        if (_clusterLightLight == null || generateClusterLight)
         {
             _clusterLightLight = new QxClusterLight();
         }
@@ -22,7 +24,7 @@ public class QxClusterDebug : MonoBehaviour
         _clusterLightLight.GenerateCluster(camera);
         
         // 分配光源
-        _clusterLightLight.LightAssign();
+        // _clusterLightLight.LightAssign();
         
         // debug
         _clusterLightLight.DebugCluster();

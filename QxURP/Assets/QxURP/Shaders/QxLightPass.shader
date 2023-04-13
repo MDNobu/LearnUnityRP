@@ -137,7 +137,7 @@ Shader "QxRP/QxLightPass"
             	}
 
             	color = direct * visbility;
-            	color = visbility;
+            	// color = visbility;
             	
             	depthOut = d;
 
