@@ -1,5 +1,6 @@
 ﻿
 
+using System;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Experimental.GlobalIllumination;
@@ -231,6 +232,55 @@ public class QxClusterLight
             {
                 uint firstLightId = assignBuffContents[indices[i].start];
                 DrawFrustum(frustums[i], colors[firstLightId%4]);
+            }
+        }
+    }
+
+    public void DebugDrawLightAffectErea(Light inLight)
+    {
+        PointLight[] pointLightsFromGPU = new PointLight[maxNumLights]; 
+        lightBuffer.GetData(pointLightsFromGPU, 0, 0, maxNumLights);
+
+        // 得到目标光源index
+        uint targetLightIndex = UInt32.MaxValue;
+        for (uint i = 0; i < pointLightsFromGPU.Length; i++)
+        {
+            if (inLight.transform.position.Equals(pointLightsFromGPU[i].position))
+            {
+                targetLightIndex = i;
+                break;
+            }
+        }
+
+        if (targetLightIndex == UInt32.MaxValue)
+        {
+            Debug.LogError("donnot find target light");
+            return;
+        }
+        
+        int numClusters = numClusterX * numClusterY * numClusterZ;
+        ClusterFrustum[] frustums = new ClusterFrustum[numClusters];
+        clusterBuffer.GetData(frustums, 0, 0, numClusters);
+        
+        LightIndex[] assignedIndices = new LightIndex[numClusters];
+        assignTable.GetData(assignedIndices, 0, 0, numClusters);
+
+        uint[] assignBuffContents = new uint[numClusters * maxNumLightsPerCluster];
+        lightAssignBuffer.GetData(assignBuffContents, 0, 0, numClusters * maxNumLightsPerCluster);
+
+        
+        // 遍历 分配表，如果当前光源在影响列表中，绘制当前index对应的frustum
+        // foreach (var assignedIndex in assignedIndices) 
+        for (int clusterIndex = 0; clusterIndex < assignedIndices.Length; clusterIndex++)
+        {
+            LightIndex assignedIndex = assignedIndices[clusterIndex];
+            for (int i = assignedIndex.start; i < assignedIndex.start + assignedIndex.count; i++)
+            {
+                if (targetLightIndex == assignBuffContents[i]) // 如果找到的index和目标index一致
+                {
+                    DrawFrustum(frustums[clusterIndex], Color.red);
+                    break;
+                }
             }
         }
     }

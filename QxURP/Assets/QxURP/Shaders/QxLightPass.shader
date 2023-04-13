@@ -52,6 +52,14 @@ Shader "QxRP/QxLightPass"
             }
 
             #define  DebugShadowMap  0
+
+            uint Index3DTo1D(uint3 index3D)
+			{
+			    return index3D.z * _numClusterX * _numClusterY +
+			        index3D.y * _numClusterX +
+			            index3D.x;
+			}
+
             
             fixed4 frag (v2f i, out float depthOut : SV_Depth) : SV_Target
             {
@@ -92,37 +100,6 @@ Shader "QxRP/QxLightPass"
             	// 计算shadow factor, 0表示在阴影中
             	float visbility = 1.0f;
             	visbility = tex2D(_shadowStrength, uv).r;
-            	{
-            		// float4 worldPosOffset = worldPos;
-            		// worldPosOffset.xyz += normal * 0.01f;
-	             //
-            		// float shadow0 = ShadowMap01(worldPosOffset, _shadowTex0, _shadowVpMatrix0);
-            		// float shadow1 = ShadowMap01(worldPosOffset, _shadowTex1, _shadowVpMatrix1);
-            		// float shadow2 = ShadowMap01(worldPosOffset, _shadowTex2, _shadowVpMatrix2);
-            		// float shadow3 = ShadowMap01(worldPosOffset, _shadowTex3, _shadowVpMatrix3);
-	             //
-            		// // 根据当前像素的相机空间 linear depth 选择不同的split shadow factor
-	             //    if (depthLinear < _split0)
-	             //    {
-	             //        visbility *= shadow0;
-	             //    }
-            		// else if (depthLinear < _split0 + _split1)
-	             //    {
-	             //        visbility *= shadow1;
-	             //    }
-            		// else if (depthLinear < _split0 + _split1 + _split2)
-	             //    {
-	             //        visbility *= shadow2;
-	             //    }
-            		// else if (depthLinear < _split0 + _split1 + _split2 + _split3)
-	             //    {
-	             //        visbility *= shadow3;
-	             //    } 
-            	}
-
-            	
-            	
-            	
 
             	float3 ambient = IBL(
             		N, V,
@@ -133,10 +110,48 @@ Shader "QxRP/QxLightPass"
             	{
 					color += direct * visbility;
             		color += emission;
-					color += ambient * occlusion;
+					// color += ambient * occlusion;
             	}
 
-            	color = direct * visbility;
+
+            	// 根据cluster based light实现多个点光源的渲染
+            	{
+            		// 计算所属cluster
+            		uint x = floor(uv * _numClusterX);
+            		uint y = floor(uv * _numClusterY);
+            		uint z = floor((1 - depthLinear) * _numClusterZ); // 注意这个depthLiner是反的
+
+            		uint3 clusterID_3D = uint3(x, y, z);
+            		uint clusterID = Index3DTo1D(clusterID_3D);
+            		LightIndex lightIndexRange = _assignTable[clusterID];
+
+            		int startIndex = lightIndexRange.start;
+            		int endIndex = lightIndexRange.count + lightIndexRange.start;
+            		// 得到影响当前cluster indices
+                    for (int i = startIndex; i < endIndex; ++i)
+                    {
+	                    uint lightIndex = _lightAssignBuffer[i];
+                    	PointLight curLight = _lightBuffer[lightIndex];
+
+                    	float curLightIrradiance = curLight.color;
+                    	L = normalize(curLight.position - worldPos);
+                    	
+                    	// 计算灯光衰减
+                    	float lightAttenuation = 1.0f;
+                    	float distP2L = distance(worldPos, curLight.position);
+                    	float d2 = distP2L * distP2L;
+                    	float r2 = curLight.radius * curLight.radius;
+                    	lightAttenuation = saturate(1 - (d2/r2) * (d2/r2));
+                    	lightAttenuation *= lightAttenuation;
+                    	
+                    	color += PBR(N, V, L, albedo, curLightIrradiance, roughness, metallic) * curLight.intensity;
+                    }
+            		
+
+            		// 遍历光源进行shading 
+            	}
+
+            	color = direct;// * visbility;
             	// color = visbility;
             	
             	depthOut = d;

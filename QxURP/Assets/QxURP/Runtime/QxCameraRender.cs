@@ -130,7 +130,7 @@ public class QxCameraRender
         // 设置一些全局的shader 参数
         SetupGlobalShaderParams();
 
-        // RenderClusterLightingPass();
+        RenderClusterLightingPass();
         
         RenderShadowDepthPass();
         

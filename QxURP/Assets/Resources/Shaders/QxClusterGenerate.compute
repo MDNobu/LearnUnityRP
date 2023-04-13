@@ -79,14 +79,14 @@ void ClusterGenerate (
     float zMax = (k + 1) / _numClusterZ;
 
     // 反转投影求cluster 视锥世界空间坐标
-    float p0 = MatTransformProj(_vpMatrixInv, float3(xMin, yMin, 0));
-    float p1 = MatTransformProj(_vpMatrixInv, float3(xMin, yMin, 1));
-    float p2 = MatTransformProj(_vpMatrixInv, float3(xMin, yMax, 0));
-    float p3 = MatTransformProj(_vpMatrixInv, float3(xMin, yMax, 1));
-    float p4 = MatTransformProj(_vpMatrixInv, float3(xMax, yMin, 0));
-    float p5 = MatTransformProj(_vpMatrixInv, float3(xMax, yMin, 1));
-    float p6 = MatTransformProj(_vpMatrixInv, float3(xMax, yMax, 0));
-    float p7 = MatTransformProj(_vpMatrixInv, float3(xMax, yMax, 1));
+    float3 p0 = MatTransformProj(_vpMatrixInv, float3(xMin, yMin, 0));
+    float3 p1 = MatTransformProj(_vpMatrixInv, float3(xMin, yMin, 1));
+    float3 p2 = MatTransformProj(_vpMatrixInv, float3(xMin, yMax, 0));
+    float3 p3 = MatTransformProj(_vpMatrixInv, float3(xMin, yMax, 1));
+    float3 p4 = MatTransformProj(_vpMatrixInv, float3(xMax, yMin, 0));
+    float3 p5 = MatTransformProj(_vpMatrixInv, float3(xMax, yMin, 1));
+    float3 p6 = MatTransformProj(_vpMatrixInv, float3(xMax, yMax, 0));
+    float3 p7 = MatTransformProj(_vpMatrixInv, float3(xMax, yMax, 1));
 
     // 世界空间根据k切分cluster frustum
     ClusterFrustum frustum;

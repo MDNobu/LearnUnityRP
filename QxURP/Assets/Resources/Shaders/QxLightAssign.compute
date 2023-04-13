@@ -44,6 +44,7 @@ bool PointSphereIntersect(float3 p, float4 sphere)
     return distance(p, sphere.xyz) < sphere.w;
 }
 
+// 现在这个求交只是简单实现，问题是存在8个顶点都不在球内，但依然相交的情况 #TODO
 bool ClusterLightIntersect(PointLight point_light, ClusterFustum frustum)
 {
     float4 sphere = float4(point_light.position, point_light.radius);
@@ -57,6 +58,7 @@ bool ClusterLightIntersect(PointLight point_light, ClusterFustum frustum)
             PointSphereIntersect(frustum.p7, sphere) ;
 }
 
+// 每个线程对应一个cluster
 [numthreads(16, 16, 1)]
 void LightAssign(
     uint3 grid : SV_GroupThreadID,
@@ -68,17 +70,18 @@ void LightAssign(
     uint3 clusterID_3D = uint3(i,j,k);
     uint clusterID_1D = Index3DTo1D(clusterID_3D);
 
-    ClusterFustum frustum = _clusterBuffer[clusterID_1D];
+    // 当前cluster对应的frustum
+    ClusterFustum curFrustum = _clusterBuffer[clusterID_1D];
 
     // 在light assign buffer中索引
     uint startIndex = clusterID_1D * _maxNumLightsPerCluster;
     uint endIndex = startIndex;
 
-    // 和光源求交
+    // 遍历光源, 和光源求交, 相交时添加到assignBuffer中
     for (int lightIndex = 0; lightIndex < _numLights; ++lightIndex)
     {
         PointLight pl = _lightBuffer[lightIndex];
-        if (!ClusterLightIntersect(pl, frustum))
+        if (ClusterLightIntersect(pl, curFrustum))
         {
             _lightAssignBuffer[endIndex++] = uint(lightIndex);
         }

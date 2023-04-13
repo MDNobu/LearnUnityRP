@@ -73,3 +73,26 @@ float _pcssFilterRadius0;
 float _pcssFilterRadius1;
 float _pcssFilterRadius2;
 float _pcssFilterRadius3;
+
+// cluster light 参数
+float _numClusterX;
+float _numClusterY;
+float _numClusterZ;
+
+struct PointLight
+{
+    float3 color;
+    float intensity;
+    float3 position;
+    float radius;
+};
+
+struct LightIndex
+{
+    int count;
+    int start;
+};
+
+StructuredBuffer<PointLight> _lightBuffer;
+StructuredBuffer<uint> _lightAssignBuffer;
+StructuredBuffer<LightIndex> _assignTable;
