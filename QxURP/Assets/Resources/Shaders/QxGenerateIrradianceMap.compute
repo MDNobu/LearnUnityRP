@@ -1,0 +1,98 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GenerateIrradianceMap
+
+int _Face;
+TextureCube<float4> _Cubemap;
+SamplerState _PointCubemap;
+int _Resolution;
+
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWStructuredBuffer<float4> _Result;
+
+float4 _Dispatch;
+
+//根据面和uv计算方向, 这里的实现应该和unity 默认的cube map的分布相关，固定的，没有太多理解的东西，直接拷过来
+float3 DirectionFromCubemapTexel(int face, float2 uv)
+{
+    float3 dir = 0;
+
+    switch (face)
+    {
+    case 0: //+X
+        dir.x = 1.0;
+        dir.yz = uv.yx * -2.0 + 1.0;
+        break;
+
+    case 1: //-X
+        dir.x = -1.0;
+        dir.y = uv.y * -2.0f + 1.0f;
+        dir.z = uv.x * 2.0f - 1.0f;
+        break;
+
+    case 2: //+Y
+        dir.xz = uv * 2.0f - 1.0f;
+        dir.y = 1.0f;
+        break;
+    case 3: //-Y
+        dir.x = uv.x * 2.0f - 1.0f;
+        dir.z = uv.y * -2.0f + 1.0f;
+        dir.y = -1.0f;
+        break;
+
+    case 4: //+Z
+        dir.x = uv.x * 2.0f - 1.0f;
+        dir.y = uv.y * -2.0f + 1.0f;
+        dir.z = 1;
+        break;
+
+    case 5: //-Z
+        dir.xy = uv * -2.0f + 1.0f;
+        dir.z = -1;
+        break;
+    }
+    return normalize(dir);
+}
+
+
+// 实现参考 https://zhuanlan.zhihu.com/p/517120906 
+[numthreads(8,8,1)]
+void GenerateIrradianceMap (uint3 dtid : SV_DispatchThreadID,
+    uint3 gtid : SV_GroupThreadID,
+    uint gIndex : SV_GroupIndex,
+    uint3 curGroupID : SV_GroupID)
+{
+    uint3 distpatchNums = uint3(_Dispatch.x, _Dispatch.y, _Dispatch.z);
+    uint uniqueID = dtid.x + dtid.y * distpatchNums.x * 8 + dtid.z * distpatchNums.x * distpatchNums.y * 8 * 8;
+
+    // +0.5 在像素中心
+    float2 uv = (float2)gtid.xy / float2(_Resolution, _Resolution) + 0.5 / float2(_Resolution, _Resolution);
+    float3 dir = DirectionFromCubemapTexel(_Face, uv);
+
+    float3 tangent = float3(0, 1, 0);
+    float upOrDown = dot(dir, tangent);
+    if (upOrDown == 1)
+    {
+        tangent = float3(1, 0, 0);
+    } else if (upOrDown == -1)
+    {
+        tangent = float3(-1, 0, 0);
+    }
+    else
+    {
+        tangent = normalize(cross(float3(0, 1, 0), dir));
+    }
+    float3 binormal = normalize(cross(dir, tangent));
+
+    float sampleStep = 0.025;
+    int N1 = 0;
+    int N2 = 0;
+    float3 irradiance = float3(0, 0, 0);
+
+    for (float phi = 0; phi < 2 * ; phi += sampleStep)
+    {
+        
+    }
+    
+}
