@@ -24,7 +24,9 @@ public class QxIBLToolEditor : Editor
         Debug.LogWarning("Output Cubemap:" + folderPath);
 
         // cubemap 一个面的宽
-        int size = 128; //envCubemap.height
+        // int size = 128; //envCubemap.height
+        int size = 128;
+        // Debug.LogError("cube map widt:" + envCubemap.width );
         outputCubeMap = new Cubemap(size, TextureFormat.RGBAFloat, false);
         // outputCubeMap.filterMode = FilterMode.Trilinear;
         
@@ -42,7 +44,9 @@ public class QxIBLToolEditor : Editor
         {
             int kid = genIrradianceMapCS.FindKernel("GenerateIrradianceMap");
             genIrradianceMapCS.SetInt("_Face", i);
-            genIrradianceMapCS.SetTexture(kid, "_Cubemap", envCubemap);
+            genIrradianceMapCS.SetInt("_Resolution", size);
+            // genIrradianceMapCS.SetTexture(kid, "_Cubemap", envCubemap);
+            genIrradianceMapCS.SetTexture(kid, "_PointCubemap", envCubemap);
             genIrradianceMapCS.SetBuffer(kid, "_Result", resultBuffer);
             genIrradianceMapCS.SetVector("_Dispatch",  new Vector4(size/8, size/8, 1, 0));
             genIrradianceMapCS.Dispatch(kid, size/8, size/8, 1);
@@ -53,12 +57,12 @@ public class QxIBLToolEditor : Editor
         } 
         outputCubeMap.Apply();
 
-        string tmpStr = "";
-        foreach (var tmpVec in tmpVecs)
-        {
-            tmpStr = tmpStr +  ",{" + tmpVec + "}";
-        }
-        Debug.Log(tmpStr);
+        // string tmpStr = "";
+        // foreach (var tmpVec in tmpVecs)
+        // {
+        //     tmpStr = tmpStr +  ",{" + tmpVec + "}";
+        // }
+        // Debug.Log(tmpStr);
 
         AssetDatabase.CreateAsset(outputCubeMap,folderPath+"/ModifiedCubemap.asset");
         AssetDatabase.SaveAssets();

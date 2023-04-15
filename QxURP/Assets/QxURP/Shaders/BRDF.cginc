@@ -107,6 +107,7 @@ float3 IBL(
     float3 specular = IBL_s * (F0 * brdf.x + brdf.y);
     
     float3 ambient = diffuse + specular;
+    ambient = diffuse;
 
     // 镜面反射
     return ambient;

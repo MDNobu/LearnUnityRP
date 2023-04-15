@@ -110,7 +110,7 @@ Shader "QxRP/QxLightPass"
             	{
 					color += direct * visbility;
             		color += emission;
-					// color += ambient * occlusion;
+					color += ambient * occlusion;
             	}
 
 
@@ -151,8 +151,11 @@ Shader "QxRP/QxLightPass"
             		// 遍历光源进行shading 
             	}
 
-            	color = direct;// * visbility;
+            	// color = direct;// * visbility;
             	// color = visbility;
+            	// color = ambient ;
+            	// color = direct;
+            	
             	
             	depthOut = d;
 
