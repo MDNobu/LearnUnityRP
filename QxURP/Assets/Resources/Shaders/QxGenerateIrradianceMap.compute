@@ -59,8 +59,62 @@ float3 DirectionFromCubemapTexel(int face, float2 uv)
     return normalize(dir);
 }
 
+// 蒙特卡洛重要性采样实现积分
+[numthreads(8,8,1)]
+void GenerateIrradianceMapMonteCarlo (uint3 dtid : SV_DispatchThreadID)
+{
+    uint3 distpatchNums = uint3(_Dispatch.x, _Dispatch.y, _Dispatch.z);
+    uint uniqueID = dtid.x + dtid.y * distpatchNums.x * 8 + dtid.z * distpatchNums.x * distpatchNums.y * 8 * 8;
+
+    // +0.5 在像素中心
+    float2 uv = (float2)dtid.xy / float2(_Resolution, _Resolution) + 0.5 / float2(_Resolution, _Resolution);
+    uint index = dtid.x + dtid.y * _Resolution;
+    float3 dir = DirectionFromCubemapTexel(_Face, uv);
+
+    float3 tangent = float3(0, 1, 0);
+    float upOrDown = dot(dir, tangent);
+    if (upOrDown == 1)
+    {
+        tangent = float3(1, 0, 0);
+    } else if (upOrDown == -1)
+    {
+        tangent = float3(-1, 0, 0);
+    }
+    else
+    {
+        tangent = normalize(cross(float3(0, 1, 0), dir));
+    }
+    float3 binormal = normalize(cross(dir, tangent));
+
+    float sampleStep = 0.025;
+    float3 irradiance = float3(0, 0, 0);
+    int nrSamples = 0;
+
+    
+    for (float phi = 0; phi < 2 * PI; phi += sampleStep)
+    {
+        for (float theta = 0; theta < 0.5 * PI; theta += sampleStep)
+        {
+            // 球坐标转换成笛卡尔坐标, 注意：这里是的tangent space的x/y/z分配和下面的转到world space相关
+            float3 normalTangentSpace = float3(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta));
+            // tangent space to world
+            float3 normalWS = normalTangentSpace.x * tangent + normalTangentSpace.y * binormal + normalTangentSpace.z * dir;
+            // _Cubemap.SampleLevel(_PointCubemap, normalWS, 0).rgb
+            irradiance += texCUBElod(_PointCubemap, float4(normalWS, 0)).rgb * cos(theta) * sin(theta);
+            nrSamples++;
+        }
+    }
+    // 对应黎曼和积分
+    // float weight = PI * PI / ()
+    irradiance *=  PI / float(nrSamples);
+
+    
+    _Result[index] = float4(irradiance.xyz, 1.0);
+}
+
 
 // 实现参考 https://zhuanlan.zhihu.com/p/517120906 和https://zhuanlan.zhihu.com/p/45519049
+// 黎曼和的方式求积分
 [numthreads(8,8,1)]
 void GenerateIrradianceMap (uint3 dtid : SV_DispatchThreadID,
     // uint3 gtid : SV_GroupThreadID,
@@ -91,11 +145,10 @@ void GenerateIrradianceMap (uint3 dtid : SV_DispatchThreadID,
     float3 binormal = normalize(cross(dir, tangent));
 
     float sampleStep = 0.025;
-    int N1 = 0;
-    int N2 = 0;
     float3 irradiance = float3(0, 0, 0);
     int nrSamples = 0;
 
+    
     for (float phi = 0; phi < 2 * PI; phi += sampleStep)
     {
         for (float theta = 0; theta < 0.5 * PI; theta += sampleStep)

@@ -136,6 +136,9 @@ public class QxCameraRender
         
         RenderBasePass();
 
+        // 渲染draw instance的物体，同样渲染到GBuffer
+        RenderInstanceDrawPass();
+
         RenderShadowProjectionPass();
         
         // _context.SetupCameraProperties(_camera);
@@ -152,6 +155,27 @@ public class QxCameraRender
         // _lighting.Setup(_context);
         
         context.Submit();
+    }
+
+    private void RenderInstanceDrawPass()
+    {
+        CommandBuffer cmdBuffer = new CommandBuffer();
+        cmdBuffer.name = "instance gbuffer";
+        cmdBuffer.BeginSample("InstanceGPass");
+        cmdBuffer.SetRenderTarget(gbufferIDs, gdepth);
+
+        Matrix4x4 viewMatrix = _camera.worldToCameraMatrix;
+        Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(_camera.projectionMatrix, false);
+        Matrix4x4 vp = projMatrix * viewMatrix;
+        
+        // 绘制instance 
+        ComputeShader cullingCS =  Resources.Load<ComputeShader>("Shaders/QxLightAssign");
+        
+        
+        
+        cmdBuffer.EndSample("InstanceGPass");
+        _context.ExecuteCommandBuffer(cmdBuffer);
+        _context.Submit();
     }
 
     private void RenderClusterLightingPass()
