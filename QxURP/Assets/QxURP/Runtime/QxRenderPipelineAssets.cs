@@ -12,6 +12,8 @@ public class QxRenderPipelineAssets : RenderPipelineAsset
 
     [SerializeField]
     public QxCSMSettings csmSettings;
+
+    public QxInstanceData[] instanceDatas;
     
     protected override RenderPipeline CreatePipeline()
     {
@@ -22,6 +24,7 @@ public class QxRenderPipelineAssets : RenderPipelineAsset
         renderPipeline.brdfLut = brdfLut;
         renderPipeline._csmSettings = csmSettings;
         renderPipeline.blurNoiseTex = blueNoiseTex;
+        renderPipeline.instanceDatas = instanceDatas;
         return renderPipeline;
     }
 }

@@ -47,6 +47,8 @@ float _shadowNormalBias3;
 
 float4x4 _vpMatrix;
 float4x4 _vpMatrixInv;
+float4x4 _vpMatrixPrev;
+float4x4 _vpMatrixPrevInv;
 
 float4x4 _shadowVpMatrix0;
 float4x4 _shadowVpMatrix1;

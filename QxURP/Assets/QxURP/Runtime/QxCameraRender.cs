@@ -27,6 +27,13 @@ public class QxCameraRender
     public Texture _brdfLut;
 
     public QxCSMSettings _csmSettings;
+    public QxInstanceData[] instanceDatas;
+
+
+    private Matrix4x4 _vpMatrix;
+    private Matrix4x4 _vpMatrixInv;
+    private Matrix4x4 _vpMatrixPrev;
+    private Matrix4x4 _vpMatrixPrevInv;
 
     private QxCSM _csm;
 
@@ -40,6 +47,8 @@ public class QxCameraRender
     private RenderTexture[] shadowTextures = new RenderTexture[4];
     private RenderTexture shadowMask;
     private RenderTexture shadowStrength;
+    
+    
 
     public QxCameraRender()
     {
@@ -100,6 +109,8 @@ public class QxCameraRender
         Matrix4x4 vpMatrixInv = vpMatrix.inverse;
         Shader.SetGlobalMatrix("_vpMatrix", vpMatrix);
         Shader.SetGlobalMatrix("_vpMatrixInv", vpMatrixInv);
+        Shader.SetGlobalMatrix("_vpMatrixPrev", _vpMatrixPrevInv);
+        Shader.SetGlobalMatrix("_vpMatrixPrevInv", _vpMatrixPrevInv);
             
             
         // 设置IBL 贴图
@@ -139,6 +150,12 @@ public class QxCameraRender
         // 渲染draw instance的物体，同样渲染到GBuffer
         RenderInstanceDrawPass();
 
+        bool isEiditor = Handles.ShouldRenderGizmos();
+        if (!isEiditor)
+        {
+            _vpMatrixPrev = _vpMatrix;
+        }
+        
         RenderShadowProjectionPass();
         
         // _context.SetupCameraProperties(_camera);
@@ -170,7 +187,12 @@ public class QxCameraRender
         
         // 绘制instance 
         ComputeShader cullingCS =  Resources.Load<ComputeShader>("Shaders/QxLightAssign");
-        
+
+        for (int i = 0; i < instanceDatas.Length; i++)
+        {
+            QxInstanceDrawer.Draw(instanceDatas[i], Camera.main, cullingCS, 
+                _vpMatrixPrev,  ref cmdBuffer);
+        }
         
         
         cmdBuffer.EndSample("InstanceGPass");

@@ -14,7 +14,8 @@ public class QxRenderPipeline : RenderPipeline
     public Texture blurNoiseTex;
 
     public QxCSMSettings _csmSettings;
-    
+
+    public QxInstanceData[] instanceDatas;
     
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
@@ -23,6 +24,7 @@ public class QxRenderPipeline : RenderPipeline
         renderer._brdfLut = brdfLut;
         renderer._csmSettings = _csmSettings;
         renderer.blurNoiseTex = blurNoiseTex;
+        renderer.instanceDatas = instanceDatas;
         
         foreach (var camera in cameras)
         {
