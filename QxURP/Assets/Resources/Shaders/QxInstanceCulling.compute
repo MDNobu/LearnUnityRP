@@ -1,5 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel InstanceCulling
+#include "UnityCG.cginc"
 
 
 int _instanceCount;
@@ -40,6 +41,45 @@ bool Visibility(float4 inPlanes[6], float4 inBounds[8])
     return count > 0;
 }
 
+bool OcclusionVisibility(float4 inBounds[8], float4x4 vpMatrix, Texture2D hizBuffer)
+{
+    // 计算中心和bounding box的宽高
+    float4 center = (0, 0, 0, 1);
+    float xmax = -1,ymax = -1, xmin = 1, ymin = 1, zmax = -1, zmin = 1;
+    for (int i = 0; i < 8; ++i)
+    {
+        // to ndc space
+        float4 boundPointNDC = mul(_vpMatrix, inBounds[i]);
+        boundPointNDC.xyz /= boundPointNDC.w;
+        center.xyz += boundPointNDC.xyz;
+
+        xmax = max(xmax, boundPointNDC.x);
+        ymax = max(ymax, boundPointNDC.y);
+        zmax = max(zmax, boundPointNDC.z);
+        xmin = min(xmin, boundPointNDC.x);
+        ymin = min(ymin, boundPointNDC.y);
+        zmin = min(zmin, boundPointNDC.z);
+    }
+
+    center.xyz /= 8;
+
+    float2 uv = center.xy * 0.5 + 0.5;
+
+    // 计算miplevel
+    float boxSize = saturate(max(xmax - xmin, ymax - ymin));
+    int mipLevel = clamp(floor(log2(boxSize * _size)), 0, 15);
+
+    uv *= _size / pow(2, mipLevel);
+    float d = hizBuffer.mips[mipLevel][int2(uv)].r;
+
+    
+    #if defined (UNITY_REVERSED_Z)
+        return d < zmax;
+    #else
+        return d > zmin;
+    #endif
+}
+
 [numthreads(128,1,1)]
 void InstanceCulling (
     uint3 gid : SV_GroupID,
@@ -66,6 +106,12 @@ void InstanceCulling (
     {
         return;
     }
+
+    // bool occlusionResult = OcclusionVisibility(boundsWS, _vpMatrix, _hizBuffer);
+    // if (!occlusionResult)
+    // {
+    //     return;
+    // }
 
     _validMatrixBuffer.Append(objectToWorld);
     InterlockedAdd(_argsBuffer[1], 1);

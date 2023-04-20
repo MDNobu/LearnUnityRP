@@ -5,7 +5,9 @@ using UnityEngine.Rendering;
 public class QxInstanceDrawer
 {
 
-    public static void Draw(QxInstanceData instanceData, Camera inCamera, ComputeShader cs,
+    public static void Draw(QxInstanceData instanceData, 
+        Camera inCamera, ComputeShader cs,
+        RenderTexture hizBuffer,
         Matrix4x4 vpMatrix, ref CommandBuffer cmdBuffer)
     {
         if (instanceData == null ||
@@ -27,19 +29,23 @@ public class QxInstanceDrawer
         Vector4[] planes = new Vector4[6];
         for (int i = 0; i < 6; i++)
         {
-            planes[i] = new Vector4(frustumPlanes[i].normal.x, frustumPlanes[i].normal.y, frustumPlanes[i].normal.z,
+            planes[i] = new Vector4(
+                frustumPlanes[i].normal.x, frustumPlanes[i].normal.y, frustumPlanes[i].normal.z,
                 frustumPlanes[i].distance);
         }
 
         Vector4[] bounds = BoundToPoints(instanceData.instanceMesh.bounds);
 
         int kid = cs.FindKernel("InstanceCulling");
+        cs.SetMatrix("_vpMatrix", vpMatrix);
         cs.SetVectorArray("_bounds", bounds);
         cs.SetVectorArray("_planes", planes);
+        cs.SetInt("_size", hizBuffer.width);
         cs.SetInt("_instanceCount", instanceData.instanceCount);
         cs.SetBuffer(kid, "_matrixBuffer", instanceData.matrixBuffer);
         cs.SetBuffer(kid, "_validMatrixBuffer", instanceData.validMatrixBuffer);
         cs.SetBuffer(kid, "_argsBuffer", instanceData.argsBuffer);
+        cs.SetTexture(kid, "_hizBuffer", hizBuffer);
 
         // 剔除
         int nDispatch = (int)MathF.Ceiling((float)instanceData.instanceCount / 128.0f);

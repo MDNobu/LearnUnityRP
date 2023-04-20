@@ -4,6 +4,7 @@ sampler2D _GT1;
 sampler2D _GT2;
 sampler2D _GT3;
 sampler2D _gdepth;
+sampler2D _hizBuffer;
 
 samplerCUBE _diffuseIBL;
 samplerCUBE _specularIBL;
@@ -15,6 +16,7 @@ sampler2D _shadowTex2;
 sampler2D _shadowTex3;
 sampler2D _shadowStrength;
 sampler2D _shadoMask;
+
 
 sampler2D _noiseTex;
 

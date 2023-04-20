@@ -19,6 +19,7 @@ public class QxCameraRender
     private RenderTexture[] gbuffers = new RenderTexture[4];
     private RenderTargetIdentifier[] gbufferIDs = new RenderTargetIdentifier[4];
 
+    private RenderTexture hizBuffer;
     
     private QxLighting _lighting = new QxLighting();
 
@@ -70,6 +71,12 @@ public class QxCameraRender
             gbufferIDs[i] = gbuffers[i];
         }
 
+        // Hiz buffer
+        int hSize = Mathf.NextPowerOfTwo(Mathf.Max(Screen.width, Screen.height)); // 必须是pot的
+        hizBuffer = new RenderTexture(hSize, hSize, 0, RenderTextureFormat.RHalf);
+        hizBuffer.autoGenerateMips = false;
+        hizBuffer.useMipMap = true;
+        hizBuffer.filterMode = FilterMode.Point;
 
         shadowMask = new RenderTexture(Screen.width / 4, Screen.height / 4,
             0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
@@ -90,6 +97,7 @@ public class QxCameraRender
     private void SetupGlobalShaderParams()
     {
         Shader.SetGlobalTexture("_gdepth", gdepth);
+        Shader.SetGlobalTexture("_hizBuffer", hizBuffer);
         for (int i = 0; i < 4; i++)
         {
             Shader.SetGlobalTexture("_GT"+i, gbuffers[i]);
@@ -153,6 +161,7 @@ public class QxCameraRender
         bool isEiditor = Handles.ShouldRenderGizmos();
         if (!isEiditor)
         {
+            RenderHizPass();
             _vpMatrixPrev = _vpMatrix;
         }
         
@@ -174,6 +183,45 @@ public class QxCameraRender
         context.Submit();
     }
 
+    private void RenderHizPass()
+    {
+        CommandBuffer cmdBuffer = new CommandBuffer();
+        cmdBuffer.name = "HizPass";
+        cmdBuffer.BeginSample("HizPass");
+        
+        // 创建纹理
+        int size = hizBuffer.width;
+        int nMips = (int)Mathf.Log(size, 2);
+        RenderTexture[] mips = new RenderTexture[nMips];
+        for (int i = 0; i < mips.Length; i++)
+        {
+            int mSize = size / (int)Mathf.Pow(2, i);
+            mips[i] = RenderTexture.GetTemporary(mSize, mSize, 0,
+                RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+            mips[i].filterMode = FilterMode.Point;
+        }
+        
+        // 生成mipmap 
+        Material hizBlitMat = new Material(Shader.Find("QxRP/QxHizBlit"));
+        cmdBuffer.Blit(gdepth, mips[0]);
+        for (int i = 1; i < mips.Length; i++)
+        {
+            cmdBuffer.Blit(mips[i - 1], mips[i], hizBlitMat);
+        }
+        
+        // 拷贝到hizBuffer的各个mip
+        for (int i = 0; i < mips.Length; i++)
+        {
+            cmdBuffer.CopyTexture(mips[i], 0, 0
+                , hizBuffer, 0, i);
+            RenderTexture.ReleaseTemporary(mips[i]);
+        }
+        
+        cmdBuffer.EndSample("HizPass");
+        _context.ExecuteCommandBuffer(cmdBuffer);
+        _context.Submit();
+    }
+
     private void RenderInstanceDrawPass()
     {
         CommandBuffer cmdBuffer = new CommandBuffer();
@@ -186,11 +234,11 @@ public class QxCameraRender
         Matrix4x4 vp = projMatrix * viewMatrix;
         
         // 绘制instance 
-        ComputeShader cullingCS =  Resources.Load<ComputeShader>("Shaders/QxLightAssign");
+        ComputeShader cullingCS =  Resources.Load<ComputeShader>("Shaders/QxInstanceCulling");
 
         for (int i = 0; i < instanceDatas.Length; i++)
         {
-            QxInstanceDrawer.Draw(instanceDatas[i], Camera.main, cullingCS, 
+            QxInstanceDrawer.Draw(instanceDatas[i], Camera.main, cullingCS, hizBuffer,
                 _vpMatrixPrev,  ref cmdBuffer);
         }
         

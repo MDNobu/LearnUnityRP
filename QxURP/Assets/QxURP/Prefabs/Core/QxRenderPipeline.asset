@@ -39,3 +39,5 @@ MonoBehaviour:
       depthNormalBias: 0.01
       pcssSearchRadius: 1
       pcssFilterRadius: 3
+  instanceDatas:
+  - {fileID: 11400000, guid: d7cb488cd1f4d4e46879ca3744061862, type: 2}

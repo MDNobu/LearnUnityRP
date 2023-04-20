@@ -29,6 +29,7 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
+			#pragma enable_d3d11_debug_symbols
 
 			#include "UnityCG.cginc"
 
@@ -59,7 +60,7 @@
             float _Metallic_global;
             float _Roughness_global;
 
-			            // https://answers.unity.com/questions/218333/shader-inversefloat4x4-function.html
+			// https://answers.unity.com/questions/218333/shader-inversefloat4x4-function.html
             float4x4 inverse(float4x4 input)
             {
                 #define minor(a,b,c) determinant(float3x3(input.a, input.b, input.c))
@@ -107,17 +108,30 @@
 
 			void frag(
 				v2f i,
-				out float GT0 : SV_Target0,
-				out float GT1 : SV_Target1,
-				out float GT2 : SV_Target2,
-				out float GT3 : SV_Target3
+				out float4 GT0 : SV_Target0,
+				out float4 GT1 : SV_Target1,
+				out float4 GT2 : SV_Target2,
+				out float4 GT3 : SV_Target3
 				)
 			{
 				float4 color = tex2D(_MainTex, i.uv);
 				float3 emission = tex2D(_EmissionMap, i.uv).rgb;
 				float3 normal = i.normal;
 				float metallic = _Metallic_global;
-				
+				float roughness = _Roughness_global;
+				float ao = tex2D(_OcclusionMap,  i.uv).g;
+
+				if (_Use_Metal_Map)
+				{
+					float4 metal = tex2D(_MetallicGlossMap, i.uv);
+					metallic = metal.r;
+					roughness = 1 - metal.a;
+				}
+
+				GT0 = color;
+				GT1 = float4(normal * 0.5 + 0.5 , 0);
+				GT2 = float4(0, 0, roughness, metallic);
+				GT3 = float4(emission, ao);
 			}
 			
 			ENDCG

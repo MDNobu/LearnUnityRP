@@ -21,6 +21,7 @@ public class QxInstanceData : ScriptableObject
     [HideInInspector]
     // submesh 下标
     public int subMeshIndex = 0;
+    [HideInInspector]
     // instance 数目，持久保存
     public int instanceCount = 0;
 
@@ -58,13 +59,24 @@ public class QxInstanceData : ScriptableObject
 
             mats[i] = m;
         }
-        
-        matrixBuffer.Release();
-        matrixBuffer = null;
-        validMatrixBuffer.Release();
-        validMatrixBuffer = null;
-        argsBuffer.Release();
-        argsBuffer = null;
+
+        if (matrixBuffer != null)
+        {
+            matrixBuffer.Release();
+            matrixBuffer = null;
+        }
+
+        if (validMatrixBuffer != null)
+        {
+            validMatrixBuffer.Release();
+            validMatrixBuffer = null;
+        }
+
+        if (argsBuffer != null)
+        {
+            argsBuffer.Release();
+            argsBuffer = null;
+        }
         
         Debug.Log("Instance Data Generate Success");
     }
