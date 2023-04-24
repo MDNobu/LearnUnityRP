@@ -2,49 +2,60 @@
 {
 	Properties
 	{
-		_MainTex ("Texture", 2D) = "white" {}
 	}
 	SubShader
 	{
+		
+		
+		CGINCLUDE
+		#include "QxSSSSCommon.cginc" 
+		#pragma target 3.0
+		ENDCG
+		
 		// No culling or depth
 		Cull Off ZWrite Off ZTest Always
+		Stencil
+		{
+			Ref 5
+			comp equal
+			pass keep
+		}
 
 		Pass
 		{
+			Name "XBlur"
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
-			
+			#pragma multi_compile_fwdbase
 			#include "UnityCG.cginc"
 
-			struct appdata
+			float4 frag(VertexOutput i) : SV_Target
 			{
-				float4 vertex : POSITION;
-				float2 uv : TEXCOORD0;
-			};
-
-			struct v2f
-			{
-				float2 uv : TEXCOORD0;
-				float4 vertex : SV_POSITION;
-			};
-
-			v2f vert (appdata v)
-			{
-				v2f o;
-				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.uv = v.uv;
-				return o;
+				float4 sceneColor = tex2D(_MainTex, i.uv);
+				float sssIntensity = _SSSScale * _CameraDepthTexture_TexelSize.x;
+				float3 xBlur = SSS(sceneColor, i.uv, float2(sssIntensity, 0)).rgb;
+				return float4(xBlur, sceneColor.a);
 			}
 			
-			sampler2D _MainTex;
+			ENDCG
+		}
+		
+		Pass
+		{
+			Name "YBlur"
+			
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+			#pragma multi_compile_fwdbase
 
-			fixed4 frag (v2f i) : SV_Target
+			float4 frag(VertexOutput psIn) : SV_Target
 			{
-				fixed4 col = tex2D(_MainTex, i.uv);
-				// just invert the colors
-				col = 1 - col;
-				return col;
+				float4 sceneColor = tex2D(_MainTex, psIn.uv);
+				float sssIntensity = _SSSScale * _CameraDepthTexture_TexelSize.y;
+				float3 yBlur = SSS(sceneColor, psIn.uv, float2(0, sssIntensity)).rgb;
+				return float4(yBlur, sceneColor.a);
 			}
 			ENDCG
 		}

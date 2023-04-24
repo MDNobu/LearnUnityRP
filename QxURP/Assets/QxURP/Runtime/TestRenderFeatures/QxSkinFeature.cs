@@ -102,9 +102,9 @@ public class QxSkinFeature : ScriptableRendererFeature
                 fresnel0
             );
             cmd.SetGlobalVector("_TransmissionTintAndFresnel0", transmissionTintAndFresnel0);
-            cmd.SetGlobalVector("_ThickRemap", new Vector4(
-                _feature.thicknessRemap.x, _feature.thicknessRemap.y, 
-                ));
+            // cmd.SetGlobalVector("_ThickRemap", new Vector4(
+            //     _feature.thicknessRemap.x, _feature.thicknessRemap.y, 
+            //     ));
             
             CommandBufferPool.Release(cmd);
         }

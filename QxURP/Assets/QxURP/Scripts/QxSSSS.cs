@@ -44,7 +44,7 @@ public class QxSSSS : MonoBehaviour
 
     private void OnPreRender()
     {
-        
+        UpdateSubsurface();
     }
 
     // 实现参考https://github.com/luxuia/separable-sss-unity
@@ -57,11 +57,14 @@ public class QxSSSS : MonoBehaviour
         _material.SetFloat(SSSScaler, Scaler);
         
         _buffer.Clear();
+        // _buffer.ClearRenderTarget(RTClearFlags.Stencil, Color.black, 1, 5);
         _buffer.GetTemporaryRT(SceneColorID, _renderCamera.pixelWidth, _renderCamera.pixelHeight,
             0, FilterMode.Trilinear, RenderTextureFormat.DefaultHDR);
-        _buffer.BlitStencil(BuiltinRenderTextureType.CameraTarget, SceneColorID,
-            BuiltinRenderTextureType.CameraTarget, _material, 0);
-        _buffer.BlitSRT(BuiltinRenderTextureType.CameraTarget,
+        _buffer.BlitStencil(BuiltinRenderTextureType.CameraTarget,
+            SceneColorID,
+            BuiltinRenderTextureType.CameraTarget, 
+            _material, 0);
+        _buffer.BlitSRT(SceneColorID,
             BuiltinRenderTextureType.CameraTarget,
             _material, 1);
     }

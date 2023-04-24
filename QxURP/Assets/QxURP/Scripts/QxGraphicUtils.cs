@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class QxGraphicUtils
+public static class QxGraphicUtils
 {
     private static Mesh m_mesh;
     private static Mesh mesh {
@@ -52,6 +52,6 @@ public class QxGraphicUtils
     {
         buffer.SetGlobalTexture(QxShaderIDs._MainTex, colorSrc);
         buffer.SetRenderTarget(colorBuffer, depthStencilBuffer);
-        buffer.DrawMesh(mesh, Matrix4x4.identity, , 0, pass);
+        buffer.DrawMesh(mesh, Matrix4x4.identity, mat, 0, pass);
     }
 }
