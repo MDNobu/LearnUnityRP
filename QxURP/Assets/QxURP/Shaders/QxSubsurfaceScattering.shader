@@ -16,8 +16,8 @@
 		 // Note: Screenspace shadow resolve is only performed when shadow cascades are enabled
         // Shadow cascades require cascade index and shadowCoord to be computed on pixel.
 		// 下面的一部分计算假定了OpenGL, #TODO 改成兼容DX的实现
-        #pragma prefer_hlslcc gles
-        #pragma exclude_renderers d3d11_9x
+        // #pragma prefer_hlslcc gles
+        // #pragma exclude_renderers d3d11_9x
 		
 		//Keep compiler quiet about Shadows.hlsl.
         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
@@ -125,7 +125,7 @@
 			UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(psInput)
 			float2 uv = psInput.uv.xy / psInput.uv.w;
 			float2 posSS = uv * _SkinDepth_TexelSize.zw;
-			float depth = SAMPLE_TEXTURE2D_X(_SkinDepth, sampler_SkinDepth, UV).r;
+			float depth = SAMPLE_TEXTURE2D_X(_SkinDepth, sampler_SkinDepth, uv).r;
 			float linearDepth = LinearEyeDepth( depth, _ZBufferParams);
 			float2 cornerPosNDC = uv + 0.5 * _SkinDepth_TexelSize.xy;
 			#if UNITY_REVERSED_Z
@@ -133,9 +133,9 @@
 			#endif
 
 			// UNITY_NEAR_CLIP_VALUE == -1是OpenGL的情况
-			#if UNITY_NEAR_CLIP_VALUE < 0
-				depth = 2 * depth - 1;
-			#endif
+			// #if UNITY_NEAR_CLIP_VALUE < 0
+			// 	depth = 2 * depth - 1;
+			// #endif
 			
 
 			float3 centerPosVS = ComputeViewSpacePosition(uv, depth, _InvProjMatrix);
@@ -154,7 +154,7 @@
 			float filterArea = PI * Sq(filterRadius * pixelsPerMm);
 
 			uint sampleCount = (uint)(filterArea/SSS_PIXELS_PER_SAMPLE);// 圆盘上有多少个采样点
-			uint sampleBudget = (uint)32;
+			uint sampleBudget = 32;
 			uint n = min(sampleCount, sampleBudget);
 			float3 S = _ShapeParamsAndMaxScatterDists.rgb;
 			float d = _ShapeParamsAndMaxScatterDists.a;

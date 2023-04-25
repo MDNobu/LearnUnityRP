@@ -2,6 +2,7 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using UniVRM10;
 using Random = UnityEngine.Random;
 
 [CustomEditor(typeof(QxIBLTool))]
@@ -70,6 +71,44 @@ public class QxIBLToolEditor : Editor
         AssetDatabase.SaveAssets();
     }
 
+    void BakeBRDFLut(Texture2D tex, ComputeShader genIrradianceMapShader)
+    {
+        // Get the asset path
+        string assetPath = AssetDatabase.GetAssetPath(tex);
+
+        // Get the folder path by removing the asset file name from the full path
+        string folderPath = Path.GetDirectoryName(assetPath);
+        Debug.LogWarning("Output Cubemap:" + folderPath);
+        
+        int resolution = 512;
+        int fullDimension = resolution * resolution;
+        tex = new Texture2D(resolution, resolution, TextureFormat.RGBA32,
+            false, true);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Point;
+        Color[] tmpColors = new Color[fullDimension];
+        ComputeBuffer resultBUffer = new ComputeBuffer(fullDimension, sizeof(float) * 4);
+
+        int kid = genIrradianceMapShader.FindKernel("CSMainBRDF");
+        genIrradianceMapShader.SetBuffer(kid, "_Result", resultBUffer);
+        genIrradianceMapShader.SetInt("_Resolution", resolution);
+        genIrradianceMapShader.Dispatch(kid, resolution/8, resolution/8, 1);
+        resultBUffer.GetData(tmpColors);
+        tex.SetPixels(tmpColors, 0);
+        tex.Apply();
+        Debug.LogWarning("generate brdf map success");
+        
+        //保存图片
+        byte[] dataBytes = tex.EncodeToPNG();
+        string savePath = folderPath + "/QxBRDF.png";
+        FileStream fileStream = File.Open(savePath,FileMode.OpenOrCreate);
+        fileStream.Write(dataBytes,0,dataBytes.Length);
+        fileStream.Close();
+        
+        // AssetDatabase.CreateAsset(tex,folderPath+"/QxBRDF");
+        AssetDatabase.SaveAssets();
+        UnityEditor.AssetDatabase.Refresh();
+    }
 
     #region 测试蒙特卡洛方法/重要性采样求积分
 
@@ -141,6 +180,13 @@ public class QxIBLToolEditor : Editor
         {
             TestMonteCarlo(IntegrateCosThetaUniform);
             TestMonteCarlo(IntegrateCosThetaImportance);
+        }
+
+        if (GUILayout.Button("生成预积分BRDF"))
+        {
+            Texture2D brdfTex = _iblTool.iblBRDFTex;
+            ComputeShader genBRDF = Resources.Load<ComputeShader>("Shaders/QxBakeBRDF");
+            BakeBRDFLut(brdfTex, genBRDF);
         }
     }
 }

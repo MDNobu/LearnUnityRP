@@ -155,6 +155,7 @@ Shader "QxRP/QxLightPass"
             	// color = visbility;
             	// color = ambient ;
             	// color = direct;
+            	color = ambient;
             	
             	
             	depthOut = d;
