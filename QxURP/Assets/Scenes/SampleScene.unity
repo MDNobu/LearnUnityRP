@@ -251,6 +251,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   srcCubeMap: {fileID: 8900000, guid: 08b6cac9e3f604c42be20320f7882272, type: 3}
   outCubeMap: {fileID: 8900000, guid: 8c22805f8e5753240924a33fdc94d67e, type: 3}
+  iblBRDFTex: {fileID: 0}
 --- !u!4 &164938255
 Transform:
   m_ObjectHideFlags: 0
@@ -1475,7 +1476,7 @@ Camera:
   far clip plane: 500
   field of view: 60
   orthographic: 1
-  orthographic size: 482.98074
+  orthographic size: 2385.1057
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -1499,7 +1500,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1191720475}
   m_LocalRotation: {x: 0.3016948, y: -0.1944673, z: 0.0630023, w: 0.9312322}
-  m_LocalPosition: {x: 2209.7173, y: -21798.373, z: 31541.783}
+  m_LocalPosition: {x: 17249.09, y: -17114.08, z: 21755.912}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -223,7 +223,7 @@ CloudInfo SampleCloudDensity_No3DTex(SamplingInfo dsi)
     float3 position = dsi.position + wind * 100;
 
     // 采样天气纹理，默认1000km平铺，r是密度，g吸收率，b云层底部高度，a云层顶部高度
-    float2 weatherTexUV = dsi.position.xyz * dsi.weatherTexTiling;
+    float2 weatherTexUV = dsi.position.xz * dsi.weatherTexTiling;
     float4 weatherData = SAMPLE_TEXTURE2D_LOD(_WeatherTex, sampler_WeatherTex, weatherTexUV *  0.000001 +
         dsi.weatherTexOffset + wind.xz * 0.01, 0
         );
@@ -277,7 +277,7 @@ CloudInfo SampleCloudDensity_RealTime(SamplingInfo dsi, bool isCheaply = true)
     float3 position = dsi.position + wind * 100;
 
     //采样天气纹理，默认1000km平铺， r 密度, g 吸收率, b 云类型(0~1 => 层云~积云)
-    float2 weatherTexUV = dsi.position.xyz * dsi.weatherTexTiling;
+    float2 weatherTexUV = dsi.position.xz * dsi.weatherTexTiling;
     float4 weatherData = SAMPLE_TEXTURE2D_LOD(_WeatherTex, sampler_WeatherTex,
         weatherTexUV * 0.000001 + dsi.weatherTexOffset + wind.xz * 0.01, 0);
     weatherData.r = Interpolation3(0, weatherData.r, 1, dsi.cloudDensityAdjust);
@@ -341,9 +341,15 @@ CloudInfo SampleCloudDensity_Bake(SamplingInfo dsi)
 {
     CloudInfo o;
     // 映射回原本比例
-    float3 postion = 
-    
+    float3 postion = dsi.position - dsi.boundBoxPosition - dsi.boundBoxScaleMax * dsi.baseShapeRatio / 2.0;
+    postion = postion / dsi.baseShapeRatio / dsi.boundBoxScaleMax;
+    // 采样3D纹理
+    float4 baseTex = SAMPLE_TEXTURE3D_LOD(_BaseShapeTex, sampler_BaseShapeTex, postion, 0);
 
+    o.density = baseTex.r * dsi.densityMultiplier * 0.02;
+    o.sdf = baseTex.g * dsi.boundBoxScaleMax;
+    o.lum = baseTex.b;
+    o.absorptivity = dsi.cloudAbsorptAdjust;
     return o;
 }
 
@@ -368,7 +374,7 @@ float Beer(float density, float absorptivity = 1)
     return exp(-density * absorptivity);
 }
 
-// 粉糖效应，模拟云的内散射影响
+//粉糖效应，模拟云的内散射影响
 float BeerPowder(float density, float absorptivity = 1)
 {
     return 2.0 * exp(-density * absorptivity) * (1.0 - exp(-2.0 * density));
