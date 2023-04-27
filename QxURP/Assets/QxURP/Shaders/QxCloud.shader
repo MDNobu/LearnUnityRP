@@ -232,11 +232,278 @@
 				// 包围盒位置
 				float3 boundBoxPosition = (_BoundBoxMax + _BoundBoxMin) / 2.0;
 
-				
+				// 计算步进开始位置和结束位置
+				#ifdef _RENDERMODE_BAKE
+					float2 dstCloud = RayBoxDst(_BoundBoxMin, _BoundBoxMax, cameraPos, viewDir);
+					// 计算包围盒的最大的缩放，该值将用来校正sdf及步进
+					float3 boundBoxScale = (_BoundBoxMax - _BoundBoxMin) / _BaseShapeRatio;
+					boundBoxScaleMax = max(max(boundBoxScale.x, boundBoxScale.y), boundBoxScale.z);
+				#else
+					float2 dstCloud = RayCloudLayerDst(sphereCenter, earthRadius,
+						_CloudHieghtRange.x, _CloudHieghtRange.y, cameraPos, viewDir);
+				#endif
+
+				float dstToCloud = dstCloud.x;
+				float dstInCloud = dstCloud.y;
+
+				// 不在包围盒内或者被物体遮挡， 直接显示背景
+				if (dstInCloud <= 0 || dstToObj <= dstToCloud)
+				{
+					return half4(0, 0, 0,1);
+				}
+
+				// 进行RayMarching
+				// 设置采样信息
+				SamplingInfo dsi;
+				dsi.baseShapeTiling = _BaseShapeTexTiling;
+				dsi.baseShapeRatio = _BaseShapeRatio;
+				dsi.boundBoxScaleMax = boundBoxScaleMax;
+				dsi.boundBoxPosition = boundBoxPosition;
+				dsi.detailShapeTiling = _DetailShapeTexTilling;
+				dsi.weatherTexTiling = _WeatherTexTilling;
+				dsi.weatherTexOffset = _WeatherTexOffset;
+				dsi.baseShapeDetailEffect = _BaseShapeDetailEffect;
+				dsi.detailEffect = _DetailEffect;
+				dsi.densityMultiplier = _DensityScale;
+				dsi.cloudDensityAdjust = _CloudCover;
+				dsi.cloudAbsorptAdjust = _CloudAbsorb;
+				dsi.windDirection = normalize(_WindDirection);
+				dsi.windSpeed = _WindSpeed;
+				dsi.cloudHeightMinMax = _CloudHieghtRange.xy;
+				dsi.stratusInfo = float3(_StratusRange.xy, _StratusFeather);
+				dsi.cumulusInfo = float3(_CumulusRange.xy, _CumulusFeather);
+				dsi.cloudOffsetLower = _CloudOffsetLower;
+				dsi.cloudOffsetUpper = _CloudOffsetUpper;
+				dsi.feather = _CloudFeather;
+				dsi.sphereCenter = sphereCenter;
+				dsi.earthRadius = earthRadius;
+
+				// 向前、向后散射
+				float phase = HGScatterMax(dot(viewDir, lightDir), _ScatterForward,
+					_ScatterForwardIntensity, _ScatterBackward,
+					_ScatterBackwardIntensity);
+				phase = _ScatterBase + phase * _ScatterMultiply;
+
+				// 蓝噪声
+				float blueNoise = SAMPLE_TEXTURE2D(_BlueNoiseTex, sampler_BlueNoiseTex, psIn.uv * _BlueNoiseTexUV).r;
+
+				// 穿出云覆盖范围的位置，结束位置
+				float endPos = dstToCloud + dstInCloud;
+				// 当前步进的距离，从包围盒开始步进
+				#ifdef _RENDERMODE_BAKE
+					// 对于烘焙光照，蓝噪声将第一次采样到云时进行影响
+					bool isFirstSampleCloud = true;
+					float currentMarchLength = dstToCloud;
+				#else
+					// 使用蓝噪声对开始步进位置进行随机， 配置TAA减轻因步进距离太大造成的层次感
+					float currentMarchLength = dstToCloud + _ShapeMarchLength * blueNoise * _BlueNoiseEffect;
+				#endif
+
+				// 当前步进位置
+				float3 currentPos = cameraPos + currentMarchLength * viewDir;
+				// 记录单次步进距离，渲染模式为Bake时用
+				float shapeMarchLength = _ShapeMarchLength;
+
+
+				#if _RENDERMODE_BAKE
+					bool isBake = true;
+				#else
+					bool isBake = false;
+				#endif
+
+				// 累计总密度
+				float totalDensity = 0;
+				// 总量度
+				float3 totalLum = 0;
+				// 光照衰减
+				float lightAttenuation = 1.0;
+
+				// 一开始以比较大的步长进行步进（2倍步长），当检测到云时，退回来进行正常的采样、光照计算
+				// 当累计采样到一次次数0密度时， 再切换成大步进，从而加速退出
+				// 云测试密度
+				float densityTest = 0;
+				// 上一次采样密度
+				float densityPrevious = 0;
+				// 0密度采样次数
+				int densitySampleCount_zero = 0;
+
+				// 开始步进，当超过步进次数、被物体遮挡、穿出云的覆盖范围时，结束步进
+				for (int marchNum = 0; marchNum < _ShapeMarchMax; ++marchNum)
+				{
+					// 一开始就大步前进，烘焙模式时，使用sdf来快速逼近
+					if (densityTest == 0 && !isBake)
+					{
+						// 向观察方向步进2倍的长度
+						currentMarchLength += _ShapeMarchLength * 2.0;
+						currentPos = cameraPos + currentMarchLength * viewDir;
+
+						// 如果步进到被物体遮挡，或穿出云的覆盖范围，跳出循环
+						if (dstToObj <= currentMarchLength || endPos <= currentMarchLength)
+						{
+							break;
+						}
+
+						// 进行密度采样，测试是否继续大步前进
+						dsi.position = currentPos;
+						densityTest = SampleCloudDensity(dsi, true).density;
+
+						// 如果检测到云，往后退一步，因为可能错过了开始位置
+						if (densityTest > 0)
+						{
+							currentMarchLength -= _ShapeMarchLength;
+						}
+					}
+					else
+					{
+						// 采样该区域的密度
+						currentPos = cameraPos + currentMarchLength * viewDir;
+						dsi.position = currentPos;
+
+						#ifdef _SHAPE_DETAIL_ON
+							CloudInfo ci = SampleCloudDensity(dsi, false);
+						#else
+							CloudInfo ci = SampleCloudDensity(dsi, true);
+						#endif
+
+						#if !_RENDERMODE_BAKE
+						// 如果当前采样密度和上次采样密度都是0， 那么进行累计，当达到指定数值时，切换到大步进
+						if (ci.density == 0 && densityPrevious == 0)
+						{
+							densitySampleCount_zero++;
+							// 累计检测到指定数值，切换到大步进
+							if (densitySampleCount_zero >= 8)
+							{
+								densityTest = 0;
+								densitySampleCount_zero = 0;
+								continue;
+							}
+						}
+						#endif
+
+						// 乘上距离相当于该区域的积分
+						#if _RENDERMODE_BAKE
+							float density = ci.density * shapeMarchLength;
+						#else
+							float density = ci.density * _ShapeMarchLength;
+						#endif
+
+						float currentLum = 0;
+						// 密度大于阈值开始计算光照
+						if (density > 0.01)
+						{
+							#if !_RENDERMODE_BAKE
+								// 计算该区域的光照贡献，从当前点向灯光方向步进
+								float2 dstCloud_light = RayCloudLayerDst(sphereCenter, earthRadius,
+									_CloudHieghtRange.x, _CloudHieghtRange.y,
+									currentPos, lightDir, false);
+								// 灯光步进长度
+								float lightMarchLength = dstCloud_light.y / _LightingMarchMax;
+								// 灯光步进位置
+								float3 currentPos_Light = currentPos;
+								// 灯光方向密度
+								float totalDensity_light = 0;
+
+								// 向灯光方向进行步进
+								for (int marchNumber_Light = 0; marchNumber_Light < _LightingMarchMax; ++marchNumber_Light)
+								{
+									currentPos_Light += lightDir * lightMarchLength;
+									dsi.position = currentPos_Light;
+									float density_Light = SampleCloudDensity(dsi, true).density * lightMarchLength;
+									totalDensity_light += density_Light;
+								}
+								// 光照强度
+								currentLum = BeerPowder(totalDensity_light, ci.absorptivity);
+							#else
+								currentLum = ci.lum;
+							#endif
+
+							currentLum = _DarknessThreshold + currentLum * (1.0 - _DarknessThreshold);
+							// 云层颜色
+							float3 cloudColor = Interpolation3(_ColorDark.rgb, _ColorCentral.rgb,
+								_ColorBright.rgb, saturate(currentLum), _ColorCentralOffset) * mainLight.color;
+
+							totalLum += lightAttenuation * cloudColor * density * phase;
+							totalDensity += density;
+							lightAttenuation *= Beer(density, ci.absorptivity);
+							if (lightAttenuation < 0.01)
+							{
+								break;
+							}
+						}
+						
+						// 向前步进
+						#if _RENDERMODE_BAKE
+						shapeMarchLength = max(_ShapeMarchLength, ci.sdf * _SDFScale);
+						// 添加蓝噪声影响
+						if (density > 0.01 && isFirstSampleCloud)
+						{
+							shapeMarchLength *= blueNoise * _BlueNoiseEffect;
+							isFirstSampleCloud = false;
+						}
+						currentMarchLength += shapeMarchLength;
+						#else
+						currentMarchLength += _ShapeMarchLength;
+						#endif
+
+						// 如果步进到被物体遮挡，或穿出云覆盖范围，跳出循环
+						if (dstToObj <= currentMarchLength || endPos <= currentMarchLength)
+						{
+							break;
+						}
+						densityPrevious = ci.density;
+					}
+				}
+
+
+				return half4(totalLum, lightAttenuation);
 			}
 			
 			ENDHLSL
 			
+		}
+		
+		Pass
+		{
+			// 最后的颜色应当为backColor.rgb * lightAttenuation + totalLum,
+			// 但是因为分帧渲染，混合需要特殊处理
+			// 云返回的颜色为half4（totalLum, lightAttenuation）, 将此混合设置为Blend One SrcAlpha
+			// 最后颜色将是totalNum + lightAttenuation * baseColor
+			Blend One SrcAlpha
+			
+			HLSLPROGRAM
+			#pragma vertex vert_blend
+			#pragma fragment frag_blend
+
+			TEXTURE2D(_MainTex);
+			SAMPLER(sampler_MainTex);
+
+			struct appdata
+			{
+				float4 vertex : POSITION;
+				float2 uv : TEXCOORD0;
+			};
+
+			struct v2f
+			{
+				float4 vertex : SV_POSITION;
+				float2 uv : TEXCOORD0;
+			};
+
+			v2f vert_blend(appdata vsIn)
+			{
+				v2f vOut;
+
+				VertexPositionInputs vertexPos = GetVertexPositionInputs(vsIn.vertex.xyz);
+				vOut.vertex  = vertexPos.positionCS;
+				vOut.uv = vsIn.uv;
+				return vOut;
+			}
+
+			half4 frag_blend(v2f psIn) : SV_Target
+			{
+				return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, psIn.uv);
+			}
+			ENDHLSL
 		}
 	}
 	
