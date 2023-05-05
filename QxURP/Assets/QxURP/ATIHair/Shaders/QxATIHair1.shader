@@ -176,6 +176,9 @@ Shader "QxCustom/QxATIHair1"
                 fixed3 spec = tex2D(_AnisoDir, pIn.uv).rgb;
                 
                 half shiftTex  = spec.g;
+                // 这里为什么用binormal而不用tangent
+                // 注意： 计算hair shading用的tangent切线表示的是从发根到发梢的Tip，这个和模型的tangent方向未必一致（方向大致相同），
+                // 使用tangent和binormal进行偏移应该和模型上的走向相关，这里用binormal应该是因为模型中的binormal方向和头发方向相似
                 half3 t1 = ShiftTagent(worldBinormal, worldNormal, _PrimaryShift + shiftTex);
                 half3 t2 = ShiftTagent(worldBinormal, worldNormal, _SecondaryShift + shiftTex);
 
