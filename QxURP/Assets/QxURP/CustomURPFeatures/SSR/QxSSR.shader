@@ -85,6 +85,7 @@ Shader "QxCustom/QxSSR"
             half4 frag(v2f pIn ) : SV_Target
             {
                 half4 finalColor = 0;
+                
 
 
                 half4 depthNormals = SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_CameraDepthNormalTexture, pIn.uv);
@@ -98,9 +99,39 @@ Shader "QxCustom/QxSSR"
 
                 half3 viewDir = normalize(posVS);
                 normalVS = normalize(normalVS);
-                half3 
-                
+                half3 reflectDir = reflect(viewDir, normalVS);
+
+                float2 curPosUV;
                 // ray marching
+                UNITY_LOOP
+                for (int i = 0; i < _MaxStep; ++i)
+                {
+                    float3 curPosVS = posVS + reflectDir * _StepSize * i;
+
+                    float4 curPosCS = mul(unity_CameraProjection, float4(curPosVS, 1.0));
+                    curPosCS.xy /= curPosCS.w;
+
+                    curPosUV = curPosCS.xy * 0.5 + 0.5;
+                    float4 curDepthNormal = SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_CameraDepthNormalTexture,
+                        curPosUV);
+                    // #TODO 这里为什么+0.2, bias???
+                    // 采样得到的depth
+                    float sampledDepth = DecodeFloatRG(curDepthNormal.zw) * _ProjectionParams.z + 0.2;
+                    float curDepth = -curPosVS.z;
+
+                    // 超出起点一定距离
+                    if (length(curPosVS - posVS) > _MaxDistance)
+                    {
+                        break;
+                    }
+
+                    if (curPosUV.x > 0 && curPosUV.y > 0 && curPosUV.x < 1 && curPosUV.y < 1
+                        && curDepth > sampledDepth && curDepth < sampledDepth + _Thickness
+                        )
+                    {
+                        finalColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, curPosUV);
+                    }
+                }
                 
                 
                 return finalColor;

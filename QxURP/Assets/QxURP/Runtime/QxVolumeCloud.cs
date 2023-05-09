@@ -168,7 +168,7 @@ public class QxVolumeCloud : ScriptableRendererFeature
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
         bool isValidCameraType = renderingData.cameraData.cameraType == CameraType.Game ||
-                                 renderingData.cameraData.cameraType == CameraType.Preview;
+                                 renderingData.cameraData.cameraType == CameraType.SceneView;
         if (!(Set.cloudMaterial && isValidCameraType))
         {
             return;

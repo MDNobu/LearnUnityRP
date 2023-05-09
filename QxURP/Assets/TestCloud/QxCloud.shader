@@ -81,6 +81,7 @@
         LOD 100
         
         HLSLINCLUDE
+        #pragma enable_d3d11_debug_symbols
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
         // #include "CloudHelp.hlsl"
         #include "QxCloudHelp.hlsl"
