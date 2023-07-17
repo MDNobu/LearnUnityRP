@@ -1,67 +1,112 @@
-Shader "QxRP/QxWriteStencil"
-{
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
-    SubShader
-    {
-        Tags { "RenderType"="Opaque" }
-        LOD 100
+Shader "Custom/StencilSurface" {
+	Properties
+	{
+		_Color("Color", Color) = (1,1,1,1)
+		_MainTex("Albedo", 2D) = "white" {}
 
-        Stencil
-        {
-            Ref 5
-            Comp Always
-            Pass Replace
-        }
-        ZWrite Off ZTest Always
-        ColorMask 0
-       
-        Pass
-        {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
+		_Glossiness("Smoothness", Range(0.0, 1.0)) = 0.5
+		_GlossMapScale("Smoothness Scale", Range(0.0, 1.0)) = 1.0
+		[Enum(Metallic Alpha,0,Albedo Alpha,1)] _SmoothnessTextureChannel("Smoothness texture channel", Float) = 0
 
-            #include "UnityCG.cginc"
+		_BumpScale("Scale", Float) = 1.0
+		_BumpMap("Normal Map", 2D) = "bump" {}
 
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
+		_OcclusionStrength("Strength", Range(0.0, 1.0)) = 1.0
+		_OcclusionMap("Occlusion", 2D) = "white" {}
 
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
-                float4 vertex : SV_POSITION;
-            };
+	}
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
+CGINCLUDE
+		#define UNITY_SETUP_BRDF_INPUT MetallicSetup
+ENDCG
 
-            v2f vert (appdata v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
-                return o;
-            }
+	SubShader
+	{
+		Tags{ "RenderType" = "Opaque" "PerformanceChecks" = "False" }
+		LOD 300
 
-            fixed4 frag (v2f i) : SV_Target
-            {
-                // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
-            }
-            ENDCG
-        }
-    }
+		// ------------------------------------------------------------------
+		//  Base forward pass (directional light, emission, lightmaps, ...)
+	Pass
+	{
+		Name "FORWARD"
+		Tags{ "LightMode" = "ForwardBase" }
+
+		Blend One Zero
+		ZWrite On
+
+		Stencil{
+			Ref 5
+			comp always
+			pass replace
+		}
+		CGPROGRAM
+#pragma target 3.0
+
+		// -------------------------------------
+
+#pragma shader_feature _NORMALMAP
+
+#pragma multi_compile_fwdbase
+#pragma multi_compile_fog
+#pragma multi_compile_instancing
+		// Uncomment the following line to enable dithering LOD crossfade. Note: there are more in the file to uncomment for other passes.
+		//#pragma multi_compile _ LOD_FADE_CROSSFADE
+
+#pragma vertex vertBase
+#pragma fragment fragBase
+#include "UnityStandardCoreForward.cginc"
+
+		ENDCG
+	}
+		// ------------------------------------------------------------------
+		//  Additive forward pass (one light per pass)
+		Pass
+	{
+		Name "FORWARD_DELTA"
+		Tags{ "LightMode" = "ForwardAdd" }
+		Blend One One
+		Fog{ Color(0,0,0,0) } // in additive pass fog should be black
+		ZWrite Off
+		ZTest LEqual
+
+		CGPROGRAM
+#pragma target 3.0
+
+		// -------------------------------------
+
+
+#pragma shader_feature _NORMALMAP
+
+#pragma multi_compile_fwdadd_fullshadows
+#pragma multi_compile_fog
+		// Uncomment the following line to enable dithering LOD crossfade. Note: there are more in the file to uncomment for other passes.
+		//#pragma multi_compile _ LOD_FADE_CROSSFADE
+
+#pragma vertex vertAdd
+#pragma fragment fragAdd
+#include "UnityStandardCoreForward.cginc"
+
+		ENDCG
+	}
+		// ------------------------------------------------------------------
+		// Extracts information for lightmapping, GI (emission, albedo, ...)
+		// This pass it not used during regular rendering.
+		Pass
+	{
+		Name "META"
+		Tags{ "LightMode" = "Meta" }
+
+		Cull Off
+
+		CGPROGRAM
+#pragma vertex vert_meta
+#pragma fragment frag_meta
+
+#include "UnityStandardMeta.cginc"
+		ENDCG
+	}
+	}
+
+	FallBack "Standard"
 }

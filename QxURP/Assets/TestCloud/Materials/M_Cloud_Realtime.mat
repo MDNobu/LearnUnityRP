@@ -138,7 +138,7 @@ Material:
     - _StratusFethear: 0.2
     - _UVSec: 0
     - _WeatherTexTiling: 1
-    - _WindSpeed: 1
+    - _WindSpeed: 0
     - _ZWrite: 1
     m_Colors:
     - _BaseShapeRatio: {r: 1, g: 1, b: 1, a: 1}
