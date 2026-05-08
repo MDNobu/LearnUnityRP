@@ -1,4 +1,6 @@
-﻿#ifndef CUSTOM_LIT_PASS_INCLUDED
+﻿#include <HLSLSupport.cginc>
+#include <UnityInstancing.cginc>
+#ifndef CUSTOM_LIT_PASS_INCLUDED
 #define CUSTOM_LIT_PASS_INCLUDED
 
 #include "../ShaderLibrary/QxCommon.hlsl"
